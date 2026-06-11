@@ -1,7 +1,38 @@
-.about-body {
-  max-width: 620px;
+.about-layout {
   margin: clamp(20px, 5vw, 48px) auto 0;
+  max-width: 640px;
+}
+
+/* When a portrait is present, place it beside the text on wide screens. */
+.about-layout.has-portrait {
+  max-width: 980px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(24px, 4vw, 48px);
+  align-items: start;
+}
+
+@media (min-width: 760px) {
+  .about-layout.has-portrait {
+    grid-template-columns: 0.85fr 1.15fr;
+  }
+}
+
+.about-portrait {
+  animation: fadeIn 0.5s var(--ease);
+}
+.about-portrait img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  background: var(--paper-dim);
+}
+
+.about-body {
   text-align: center;
+}
+.about-layout.has-portrait .about-body {
+  text-align: left;
 }
 
 .about-body p {
@@ -14,4 +45,9 @@
 
 .about-body p:last-child {
   margin-bottom: 0;
+}
+
+.about-placeholder {
+  color: var(--ink-faint);
+  font-style: italic;
 }

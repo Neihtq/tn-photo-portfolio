@@ -41,6 +41,20 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
     };
   });
 
+  // About + Connect page content (configured via admin).
+  app.get("/api/about", async () => ({
+    aboutTitle: getSetting("about_title") || "About",
+    aboutText: getSetting("about_text") ?? "",
+    connectTitle: getSetting("connect_title") || "Connect",
+    connectText: getSetting("connect_text") ?? "",
+    connectEmail: getSetting("connect_email") ?? "",
+    portrait: getSetting("about_portrait_path") ? "/api/about-portrait" : null,
+    instagram: {
+      handle: getSetting("instagram_handle") ?? "",
+      url: getSetting("instagram_url") ?? "",
+    },
+  }));
+
   // Paginated home gallery (infinite scroll). Cursor = sort_order of last item.
   app.get<{ Querystring: { cursor?: string; limit?: string } }>(
     "/api/home/images",
@@ -153,6 +167,13 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
     const p = getSetting("signature_path");
     if (!p || !fs.existsSync(p)) return reply.code(404).send({ error: "no_signature" });
     return sendFile(reply, p, "image/png");
+  });
+
+  // About portrait (a photo of the photographer), shown on the About page.
+  app.get("/api/about-portrait", (_req, reply) => {
+    const p = getSetting("about_portrait_path");
+    if (!p || !fs.existsSync(p)) return reply.code(404).send({ error: "no_portrait" });
+    return sendFile(reply, p, "image/webp");
   });
 }
 

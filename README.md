@@ -111,10 +111,20 @@ That's the only public URL — no subdomains required.
 1. Log in at `https://thienq.ddnss.de/admin`.
 2. **Settings:** upload your signature PNG, set Instagram handle/URL and site name.
 3. **Categories:** create Family, Engagement/Weddings, People, Things (or your own).
+   Set each category's thumbnail with the **visual picker** (a grid of all your
+   uploaded images) — no need to type image ids.
 4. **Albums:** create albums, assign categories, upload photos, set captions, pick a
-   thumbnail, reorder / 1-click sort. Mark an album **private** + set a password to
-   get a shareable `/private/<slug>` link with the "Download All" ZIP flow.
+   thumbnail (click an image in the album's grid), reorder / 1-click sort. Mark an
+   album **private** + set a password to get a shareable `/private/<slug>` link with
+   the "Download All" ZIP flow.
 5. **Home Gallery:** upload/select the selected-work photos for the landing page.
+6. **About & Connect:** write your About title/text, upload a portrait photo of
+   yourself, and set the Connect title/text + contact email. These drive the public
+   `/about` and `/connect` pages.
+
+> Tip: thumbnails (category) and the signature/portrait images are cached
+> aggressively by the browser; the admin UI cache-busts them automatically after
+> you upload, so you'll see changes immediately.
 
 ---
 

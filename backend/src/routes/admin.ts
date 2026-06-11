@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import path from "node:path";
 import fs from "node:fs";
 import { pipeline } from "node:stream/promises";
+import sharp from "sharp";
 import { db } from "../db.js";
 import { config } from "../config.js";
 import {
@@ -79,6 +80,75 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       return { ok: true };
     },
   );
+
+  // ---- About / Connect page content ----
+  app.get("/api/admin/about", guard, async () => ({
+    aboutTitle: getSetting("about_title") ?? "",
+    aboutText: getSetting("about_text") ?? "",
+    connectTitle: getSetting("connect_title") ?? "",
+    connectText: getSetting("connect_text") ?? "",
+    connectEmail: getSetting("connect_email") ?? "",
+    hasPortrait: !!getSetting("about_portrait_path"),
+  }));
+
+  app.put<{
+    Body: {
+      aboutTitle?: string;
+      aboutText?: string;
+      connectTitle?: string;
+      connectText?: string;
+      connectEmail?: string;
+    };
+  }>("/api/admin/about", guard, async (req) => {
+    const b = req.body ?? {};
+    if (b.aboutTitle !== undefined) setSetting("about_title", b.aboutTitle);
+    if (b.aboutText !== undefined) setSetting("about_text", b.aboutText);
+    if (b.connectTitle !== undefined) setSetting("connect_title", b.connectTitle);
+    if (b.connectText !== undefined) setSetting("connect_text", b.connectText);
+    if (b.connectEmail !== undefined) setSetting("connect_email", b.connectEmail);
+    return { ok: true };
+  });
+
+  // Upload/replace the About portrait (a photo of the photographer). Processed
+  // by sharp into a reasonably sized WebP for fast loading.
+  app.post("/api/admin/about-portrait", guard, async (req, reply) => {
+    const file = await req.file();
+    if (!file) return reply.code(400).send({ error: "no_file" });
+    const dest = path.join(config.signatureDir, "about-portrait.webp");
+    const buf = await file.toBuffer();
+    await sharp(buf, { failOn: "none" })
+      .rotate()
+      .resize(1400, 1400, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toFile(dest);
+    setSetting("about_portrait_path", dest);
+    return { ok: true };
+  });
+
+  app.delete("/api/admin/about-portrait", guard, async () => {
+    const p = getSetting("about_portrait_path");
+    if (p) await fs.promises.rm(p, { force: true }).catch(() => {});
+    setSetting("about_portrait_path", "");
+    return { ok: true };
+  });
+
+  // All images (with album label) — used by the admin visual thumbnail pickers.
+  app.get("/api/admin/images/all", guard, async () => {
+    const rows = db
+      .prepare(
+        `SELECT i.id, i.caption, i.album_id, a.name AS album_name
+           FROM images i LEFT JOIN albums a ON a.id = i.album_id
+          ORDER BY i.album_id IS NULL, a.name, i.sort_order, i.id`,
+      )
+      .all() as { id: number; caption: string; album_id: number | null; album_name: string | null }[];
+    return rows.map((r) => ({
+      id: r.id,
+      caption: r.caption,
+      albumId: r.album_id,
+      albumName: r.album_name ?? "Home gallery",
+      thumb: `/api/images/${r.id}/thumb`,
+    }));
+  });
 
   // Upload/replace signature PNG.
   app.post("/api/admin/signature", guard, async (req, reply) => {

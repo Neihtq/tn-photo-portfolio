@@ -117,7 +117,9 @@ photo-portfolio/
 ## 5. API surface (draft)
 
 Public (no auth):
-- `GET /api/home` → signature, instagram, paginated home gallery (infinite scroll: `?cursor=&limit=`)
+- `GET /api/home` → signature, instagram, site name
+- `GET /api/about` → About/Connect content (titles, text, email, portrait url, instagram)
+- `GET /api/about-portrait` → the portrait image (webp)
 - `GET /api/categories`
 - `GET /api/categories/:slug/albums`
 - `GET /api/albums/:slug` → name, subtitle, paginated images
@@ -135,9 +137,10 @@ Admin (auth required):
 - `POST /api/admin/login`
 - Settings: signature upload/replace, instagram fields
 - Home gallery: add/remove/reorder/upload images
-- Categories: CRUD + thumbnail
+- Categories: CRUD + thumbnail (thumbnail chosen via visual picker → `GET /api/admin/images/all`)
 - Albums: CRUD, assign category, title/subtitle, thumbnail, private flag + password, image upload/delete/caption/reorder, 1-click sort by name/date asc/desc
 - Image upload endpoint → runs sharp pipeline (original + full + thumb)
+- About & Connect content: `GET/PUT /api/admin/about`, `POST/DELETE /api/admin/about-portrait` (portrait processed by sharp → webp)
 
 ---
 
@@ -154,7 +157,12 @@ Pages:
 - **Albums**: category name top-center; same layout as galleries; album cards w/ thumbnails; click → Album.
 - **Album**: album name + optional subtitle top-center; full-width masonry; previews + hover + lightbox + infinite scroll.
 - **Private Album**: reached via private URL; password gate first; like Album; "Download All" button between subtitle and gallery (poll UX); lightbox has per-image full-quality download button.
-- **Admin**: username+password login; management UIs for all of the above.
+- **About**: a configurable portrait photo + configurable text (title + paragraphs), both set from the admin "About & Connect" page. Portrait beside text on wide screens.
+- **Connect**: configurable title + intro text + contact email (mailto) + Instagram link, all set from admin.
+- **Admin**: username+password login; management UIs for all of the above, including:
+  - **About & Connect** page: edit About title/text + upload/replace/delete a portrait photo; edit Connect title/text/email.
+  - **Category thumbnails** are chosen via a **visual ImagePicker modal** (grid of all uploaded images grouped by album), not by typing an id.
+  - **Album thumbnails** are chosen by clicking an image within the Album Editor's own image grid.
 
 ---
 
@@ -174,7 +182,13 @@ Legend: [ ] todo · [~] in progress · [x] done
 - [x] **Phase 8 — Admin UI**: login + all management screens (settings/signature, categories, albums, album editor, home gallery) ✓.
   - **Frontend: `npm run build` passes (72 modules, tsc clean). Adversarial spec review: 0 blockers, 1 major (CSS coupling) fixed.**
 - [x] **Phase 9 — Docker/nginx**: backend Dockerfile ✓, frontend Dockerfile (build→nginx) ✓, nginx conf (SPA + /api proxy) ✓, docker-compose (Finch-compatible) ✓, .env.example ✓.
-- [~] **Phase 10 — Docs + polish**: README deploy guide (TrueNAS + NPM + Finch) ✓. Live HTTP smoke test of backend ✓. Remaining: container build verification, final commit.
+- [x] **Phase 10 — Docs + polish**: README deploy guide (TrueNAS + NPM + Finch) ✓. Full container stack verified on Finch end-to-end (build, login, upload→variants, persistence across down/up) ✓.
+- [x] **Phase 11 — About/Connect CMS + visual pickers** (post-MVP, user-requested):
+  - About & Connect pages now render admin-configured text + a portrait photo; new admin "About & Connect" screen manages them.
+  - Category thumbnails chosen via a reusable visual `ImagePicker` modal (album thumbnails already used in-grid clicking).
+  - Backend: 11/11 tests pass (added about/portrait/picker coverage). Verified live in containers.
+
+**Git branch:** `main` (not master).
 
 **Milestone pings (ntfy):** after Phase 4 (backend complete), after Phase 8 (frontend complete), after Phase 9 (deployable), and on any blocker needing manual input (e.g. real TrueNAS paths, NPM config, signature PNG asset).
 
@@ -186,4 +200,4 @@ Legend: [ ] todo · [~] in progress · [x] done
 - JWT/session secret: from `.env`.
 - TrueNAS host path for the persistent volume bind-mount (README will use `./data`; user maps to a dataset).
 - Actual signature PNG + seed photos: user uploads via Admin after deploy.
-- "About" and "Connect" page content: spec lists them as nav items but gives no content spec → will build minimal placeholder pages; confirm desired content with user.
+- About/Connect content + portrait: now fully editable from the admin "About & Connect" page (no code change needed). User fills these in after deploy.

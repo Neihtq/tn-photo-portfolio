@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../api/client";
 import type { AdminCategory } from "../../api/types";
+import { ImagePicker } from "../../components/ImagePicker";
 import "./CategoriesAdmin.css";
 
 // Admin → Categories: list, add, rename, delete, set/clear thumbnail, reorder.
@@ -14,6 +15,9 @@ export function CategoriesAdmin() {
 
   // id of the category currently being saved (rename / thumbnail / delete / reorder)
   const [busyId, setBusyId] = useState<number | null>(null);
+
+  // Category whose thumbnail is being chosen via the visual picker (or null).
+  const [pickerFor, setPickerFor] = useState<AdminCategory | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,24 +84,11 @@ export function CategoriesAdmin() {
     }
   }
 
-  async function onSetThumbnail(cat: AdminCategory) {
-    const next = window.prompt(
-      "Thumbnail image id (leave blank to clear). Find ids inside an album's images.",
-      cat.thumbnail_image_id != null ? String(cat.thumbnail_image_id) : "",
-    );
-    if (next == null) return;
-    const trimmed = next.trim();
-    let thumbnailImageId: number | null;
-    if (trimmed === "") {
-      thumbnailImageId = null;
-    } else {
-      const parsed = Number(trimmed);
-      if (!Number.isInteger(parsed) || parsed <= 0) {
-        setError("Thumbnail image id must be a positive whole number.");
-        return;
-      }
-      thumbnailImageId = parsed;
-    }
+  // Persist a thumbnail choice made in the visual picker (id, or null to clear).
+  async function onPickThumbnail(thumbnailImageId: number | null) {
+    const cat = pickerFor;
+    setPickerFor(null);
+    if (!cat) return;
     setBusyId(cat.id);
     setError(null);
     try {
@@ -105,19 +96,6 @@ export function CategoriesAdmin() {
       await load();
     } catch {
       setError("Could not update thumbnail.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function onClearThumbnail(cat: AdminCategory) {
-    setBusyId(cat.id);
-    setError(null);
-    try {
-      await api.updateCategory(cat.id, { thumbnailImageId: null });
-      await load();
-    } catch {
-      setError("Could not clear thumbnail.");
     } finally {
       setBusyId(null);
     }
@@ -226,21 +204,11 @@ export function CategoriesAdmin() {
                   <button
                     className="admin-btn"
                     type="button"
-                    onClick={() => void onSetThumbnail(cat)}
+                    onClick={() => setPickerFor(cat)}
                     disabled={busy}
                   >
-                    Set thumbnail
+                    {cat.thumbnail_image_id != null ? "Change thumbnail" : "Set thumbnail"}
                   </button>
-                  {cat.thumbnail_image_id != null && (
-                    <button
-                      className="admin-btn"
-                      type="button"
-                      onClick={() => void onClearThumbnail(cat)}
-                      disabled={busy}
-                    >
-                      Clear thumbnail
-                    </button>
-                  )}
                   <button
                     className="admin-btn admin-btn-danger"
                     type="button"
@@ -254,6 +222,16 @@ export function CategoriesAdmin() {
             );
           })}
         </ul>
+      )}
+
+      {pickerFor && (
+        <ImagePicker
+          title={`Thumbnail for “${pickerFor.name}”`}
+          selectedId={pickerFor.thumbnail_image_id}
+          allowClear={pickerFor.thumbnail_image_id != null}
+          onPick={(id) => void onPickThumbnail(id)}
+          onClose={() => setPickerFor(null)}
+        />
       )}
     </div>
   );

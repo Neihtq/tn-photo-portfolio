@@ -311,3 +311,98 @@ test("expired zip is swept and returns gone", async () => {
   res = await app.inject({ method: "GET", url: `/api/download/${token}/status` });
   assert.equal(res.json().status, "ready");
 });
+
+test("about/connect content: defaults, save, and public read", async () => {
+  // Public defaults before anything is configured.
+  let res = await app.inject({ method: "GET", url: "/api/about" });
+  assert.equal(res.statusCode, 200);
+  let body = res.json();
+  assert.equal(body.aboutTitle, "About");
+  assert.equal(body.connectTitle, "Connect");
+  assert.equal(body.portrait, null);
+
+  // Save content as admin.
+  res = await app.inject({
+    method: "PUT",
+    url: "/api/admin/about",
+    headers: { cookie: adminCookie },
+    payload: {
+      aboutTitle: "Hi, I'm Thien",
+      aboutText: "First para.\n\nSecond para.",
+      connectTitle: "Say hello",
+      connectText: "Available for bookings.",
+      connectEmail: "me@example.com",
+    },
+  });
+  assert.equal(res.statusCode, 200);
+
+  // Public read reflects it.
+  res = await app.inject({ method: "GET", url: "/api/about" });
+  body = res.json();
+  assert.equal(body.aboutTitle, "Hi, I'm Thien");
+  assert.equal(body.connectEmail, "me@example.com");
+  assert.match(body.aboutText, /Second para/);
+});
+
+test("about portrait: upload generates webp and serves; delete removes it", async () => {
+  const mp = multipart({}, [{ name: "file", filename: "me.jpg", data: await jpeg(1600, 1200) }]);
+  let res = await app.inject({
+    method: "POST",
+    url: "/api/admin/about-portrait",
+    headers: { cookie: adminCookie, ...mp.headers },
+    payload: mp.body,
+  });
+  assert.equal(res.statusCode, 200);
+  assert.ok(fs.existsSync(path.join(TMP, "signature", "about-portrait.webp")), "portrait on disk");
+
+  // public endpoint reports it and serves webp
+  res = await app.inject({ method: "GET", url: "/api/about" });
+  assert.equal(res.json().portrait, "/api/about-portrait");
+  res = await app.inject({ method: "GET", url: "/api/about-portrait" });
+  assert.equal(res.statusCode, 200);
+  assert.match(String(res.headers["content-type"]), /image\/webp/);
+
+  // delete
+  res = await app.inject({
+    method: "DELETE",
+    url: "/api/admin/about-portrait",
+    headers: { cookie: adminCookie },
+  });
+  assert.equal(res.statusCode, 200);
+  res = await app.inject({ method: "GET", url: "/api/about" });
+  assert.equal(res.json().portrait, null);
+});
+
+test("admin images/all powers the thumbnail picker and category thumbnail set", async () => {
+  // There is at least one image from earlier tests; create a category and assign one.
+  let res = await app.inject({
+    method: "GET",
+    url: "/api/admin/images/all",
+    headers: { cookie: adminCookie },
+  });
+  assert.equal(res.statusCode, 200);
+  const all = res.json();
+  assert.ok(Array.isArray(all) && all.length > 0, "has images to pick from");
+  assert.ok(all[0].thumb && typeof all[0].albumName === "string");
+
+  res = await app.inject({
+    method: "POST",
+    url: "/api/admin/categories",
+    headers: { cookie: adminCookie },
+    payload: { name: "People" },
+  });
+  const catId = res.json().id;
+  const imgId = all[0].id;
+  res = await app.inject({
+    method: "PUT",
+    url: `/api/admin/categories/${catId}`,
+    headers: { cookie: adminCookie },
+    payload: { thumbnailImageId: imgId },
+  });
+  assert.equal(res.statusCode, 200);
+
+  // public categories shows the chosen thumbnail
+  res = await app.inject({ method: "GET", url: "/api/categories" });
+  const people = res.json().find((c: any) => c.slug === "people");
+  assert.ok(people && people.thumbnail === `/api/images/${imgId}/thumb`);
+});

@@ -1,6 +1,7 @@
 // Thin fetch wrapper around the backend API. Same-origin in production (nginx),
 // proxied in dev (vite). All requests send cookies for auth/unlock sessions.
 import type {
+  AdminAbout,
   AdminAlbum,
   AdminCategory,
   AdminImage,
@@ -11,6 +12,8 @@ import type {
   DownloadStatus,
   HomeInfo,
   ImagePage,
+  PickerImage,
+  PublicAbout,
 } from "./types";
 
 export class ApiError extends Error {
@@ -46,6 +49,7 @@ function jsonInit(method: string, body?: unknown): RequestInit {
 export const api = {
   // ---- public ----
   home: () => req<HomeInfo>("/api/home"),
+  about: () => req<PublicAbout>("/api/about"),
   homeImages: (cursor = 0, limit = 24) =>
     req<ImagePage>(`/api/home/images?cursor=${cursor}&limit=${limit}`),
   categories: () => req<Category[]>("/api/categories"),
@@ -83,6 +87,19 @@ export const api = {
     return req("/api/admin/signature", { method: "POST", body: fd });
   },
   deleteSignature: () => req("/api/admin/signature", { method: "DELETE" }),
+
+  adminAbout: () => req<AdminAbout>("/api/admin/about"),
+  saveAbout: (a: Partial<Omit<AdminAbout, "hasPortrait">>) =>
+    req("/api/admin/about", jsonInit("PUT", a)),
+  uploadPortrait: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return req("/api/admin/about-portrait", { method: "POST", body: fd });
+  },
+  deletePortrait: () => req("/api/admin/about-portrait", { method: "DELETE" }),
+
+  // All images for the visual thumbnail pickers.
+  allImages: () => req<PickerImage[]>("/api/admin/images/all"),
 
   adminCategories: () => req<AdminCategory[]>("/api/admin/categories"),
   createCategory: (name: string) =>

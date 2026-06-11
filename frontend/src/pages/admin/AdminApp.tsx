@@ -7,6 +7,7 @@ import { CategoriesAdmin } from "./CategoriesAdmin";
 import { AlbumsAdmin } from "./AlbumsAdmin";
 import { AlbumEditor } from "./AlbumEditor";
 import { SettingsAdmin } from "./SettingsAdmin";
+import { AboutAdmin } from "./AboutAdmin";
 import "./AdminApp.css";
 
 type AuthState = "checking" | "authed" | "anon";
@@ -67,6 +68,9 @@ export function AdminApp() {
           <NavLink to="/admin/albums" className={navClass}>
             Albums
           </NavLink>
+          <NavLink to="/admin/about" className={navClass}>
+            About &amp; Connect
+          </NavLink>
           <NavLink to="/admin/settings" className={navClass}>
             Settings
           </NavLink>
@@ -81,6 +85,7 @@ export function AdminApp() {
           <Route path="categories" element={<CategoriesAdmin />} />
           <Route path="albums" element={<AlbumsAdmin />} />
           <Route path="albums/:id" element={<AlbumEditor />} />
+          <Route path="about" element={<AboutAdmin />} />
           <Route path="settings" element={<SettingsAdmin />} />
         </Routes>
       </main>

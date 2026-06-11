@@ -1,3 +1,25 @@
+.connect-intro {
+  max-width: 580px;
+  margin: clamp(16px, 4vw, 36px) auto 0;
+  text-align: center;
+}
+.connect-intro p {
+  font-family: var(--font-display);
+  font-size: clamp(17px, 2vw, 21px);
+  line-height: 1.7;
+  color: var(--ink-soft);
+  margin: 0 0 1.2em;
+}
+.connect-intro p:last-child {
+  margin-bottom: 0;
+}
+
+.connect-empty {
+  color: var(--ink-faint);
+  font-style: italic;
+  padding: 12px 0;
+}
+
 .connect-links {
   max-width: 440px;
   margin: clamp(20px, 5vw, 48px) auto 0;

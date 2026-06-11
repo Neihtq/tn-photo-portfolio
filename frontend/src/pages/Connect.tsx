@@ -1,58 +1,75 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import type { HomeInfo } from "../api/types";
+import type { PublicAbout } from "../api/types";
 import "./Connect.css";
 
+// Connect page: configured intro text + Instagram + contact email (from admin).
 export function Connect() {
-  const [info, setInfo] = useState<HomeInfo | null>(null);
+  const [about, setAbout] = useState<PublicAbout | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     api
-      .home()
-      .then((data) => {
-        if (active) setInfo(data);
-      })
-      .catch(() => {
-        if (active) setInfo(null);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+      .about()
+      .then((data) => active && setAbout(data))
+      .catch(() => active && setAbout(null))
+      .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
   }, []);
 
-  const instagram = info?.instagram;
+  const title = about?.connectTitle || "Connect";
+  const instagram = about?.instagram;
   const hasInstagram = Boolean(instagram?.url && instagram?.handle);
+  const email = about?.connectEmail?.trim();
+  const paragraphs = (about?.connectText ?? "")
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
 
   return (
     <div className="content connect">
-      <h1 className="page-title">Connect</h1>
-      <p className="page-subtitle">For commissions, prints, and kind words.</p>
+      <h1 className="page-title">{title}</h1>
 
       {loading ? (
         <div className="spinner" />
       ) : (
-        <div className="connect-links">
-          {hasInstagram && (
-            <a
-              className="connect-link"
-              href={instagram!.url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <span className="connect-label">Instagram</span>
-              <span className="connect-value">{instagram!.handle}</span>
-            </a>
+        <>
+          {paragraphs.length > 0 && (
+            <div className="connect-intro">
+              {paragraphs.map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
+            </div>
           )}
-          <a className="connect-link" href="mailto:hello@example.com">
-            <span className="connect-label">Email</span>
-            <span className="connect-value">hello@example.com</span>
-          </a>
-        </div>
+
+          <div className="connect-links">
+            {hasInstagram && (
+              <a
+                className="connect-link"
+                href={instagram!.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <span className="connect-label">Instagram</span>
+                <span className="connect-value">{instagram!.handle}</span>
+              </a>
+            )}
+            {email && (
+              <a className="connect-link" href={`mailto:${email}`}>
+                <span className="connect-label">Email</span>
+                <span className="connect-value">{email}</span>
+              </a>
+            )}
+            {!hasInstagram && !email && (
+              <p className="connect-empty">
+                Add your contact details from the admin dashboard (About &amp; Connect).
+              </p>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

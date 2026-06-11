@@ -90,3 +90,32 @@ export interface AdminSettings {
   instagramUrl: string;
   hasSignature: boolean;
 }
+
+// About / Connect page content (configured via admin).
+export interface AdminAbout {
+  aboutTitle: string;
+  aboutText: string;
+  connectTitle: string;
+  connectText: string;
+  connectEmail: string;
+  hasPortrait: boolean;
+}
+
+export interface PublicAbout {
+  aboutTitle: string;
+  aboutText: string;
+  connectTitle: string;
+  connectText: string;
+  connectEmail: string;
+  portrait: string | null;
+  instagram: { handle: string; url: string };
+}
+
+// A selectable image for the admin visual thumbnail pickers.
+export interface PickerImage {
+  id: number;
+  caption: string;
+  albumId: number | null;
+  albumName: string;
+  thumb: string;
+}
