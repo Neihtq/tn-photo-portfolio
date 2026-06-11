@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+.DS_Store
+*.log
+
+# Persistent data volume (images + sqlite) — never commit
+backend/data/
+data/
+
+# Env
+.env
+*.local
+
+# Editor
+.vscode/
+.idea/

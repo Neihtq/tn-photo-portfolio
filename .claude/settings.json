@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./scripts/notify.sh:*)",
+      "Bash(bash scripts/notify.sh:*)"
+    ],
+    "deny": [],
+    "additionalDirectories": []
+  }
+}
