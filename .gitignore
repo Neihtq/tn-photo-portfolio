@@ -3,6 +3,7 @@ dist/
 build/
 .DS_Store
 *.log
+*.tsbuildinfo
 
 # Persistent data volume (images + sqlite) — never commit
 backend/data/
