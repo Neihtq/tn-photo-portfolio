@@ -1,0 +1,36 @@
+# Photo portfolio stack. Two services behind one nginx (the `web` service).
+# Works with Docker (TrueNAS) and Finch (dev MacBook): `finch compose up -d`.
+#
+# Persistence: the ./data bind-mount holds the SQLite DB and all image files.
+# On TrueNAS, point this at a dataset path (see README). Data survives rebuilds.
+
+services:
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATA_DIR=/data
+      - PORT=4000
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in .env}
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH:?set ADMIN_PASSWORD_HASH in .env}
+      - ZIP_TTL_MINUTES=${ZIP_TTL_MINUTES:-10}
+      - MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-100}
+      - FULL_MAX_EDGE=${FULL_MAX_EDGE:-2560}
+      - FULL_QUALITY=${FULL_QUALITY:-82}
+    volumes:
+      - ${DATA_PATH:-./data}:/data
+    expose:
+      - "4000"
+
+  web:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      # Host port → nginx. Point Nginx Proxy Manager's proxy host at this.
+      - "${WEB_PORT:-8080}:80"

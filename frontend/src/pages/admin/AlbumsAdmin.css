@@ -1,0 +1,162 @@
+/* Admin → Albums list + create. Reuses shared admin primitives from AdminApp.css
+   (.admin-card, .admin-table, .admin-btn, .admin-input, .admin-select, .admin-field).
+   Only album-specific layout lives here. */
+
+.albums-admin {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.albums-admin .page-title {
+  text-align: left;
+  margin-top: 0;
+}
+
+.albums-create {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: clamp(24px, 4vw, 36px);
+}
+
+.albums-create-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--admin-ink);
+}
+
+.albums-create-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.albums-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  color: var(--admin-ink-soft);
+  cursor: pointer;
+}
+
+.albums-checkbox input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--admin-accent);
+  cursor: pointer;
+}
+
+/* ---------- table ---------- */
+.albums-table {
+  margin-top: 4px;
+}
+
+.albums-col-order {
+  width: 64px;
+}
+
+.albums-col-visibility {
+  width: 110px;
+}
+
+.albums-col-count {
+  width: 80px;
+  text-align: center;
+}
+
+.albums-table td.albums-col-count {
+  text-align: center;
+}
+
+.albums-col-actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.albums-table td.albums-col-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.albums-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.albums-arrow {
+  width: 26px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  border: 1px solid var(--admin-border);
+  border-radius: 5px;
+  background: var(--admin-surface);
+  color: var(--admin-ink-soft);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.albums-arrow:hover:not(:disabled) {
+  background: var(--admin-bg);
+  color: var(--admin-ink);
+}
+
+.albums-arrow:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.albums-name {
+  font-weight: 600;
+  color: var(--admin-ink);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.albums-name:hover {
+  color: var(--admin-accent);
+}
+
+.albums-subtitle {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--admin-ink-soft);
+}
+
+.albums-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--admin-ink-soft);
+  background: var(--admin-bg);
+  border: 1px solid var(--admin-border);
+}
+
+.albums-badge-private {
+  color: #8a4b00;
+  background: #fdf2e2;
+  border-color: #f3dcb8;
+}
+
+@media (max-width: 720px) {
+  .albums-create-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .albums-table td.albums-col-actions {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+}

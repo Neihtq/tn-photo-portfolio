@@ -1,0 +1,27 @@
+.not-found {
+  text-align: center;
+  padding-top: clamp(48px, 12vh, 140px);
+}
+
+.not-found-text {
+  font-family: var(--font-display);
+  font-size: clamp(18px, 2.2vw, 22px);
+  color: var(--ink-soft);
+  margin: 0 0 clamp(28px, 5vw, 44px);
+}
+
+.not-found-home {
+  display: inline-block;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+
+.not-found-home:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}

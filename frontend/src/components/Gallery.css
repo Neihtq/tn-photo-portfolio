@@ -1,0 +1,67 @@
+/* Column-based masonry: equal-width columns → straight outer edges,
+   varying tile heights → masonry feel, consistent gutters via --gutter. */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), 1fr);
+  gap: var(--gutter);
+  align-items: start;
+}
+
+.gallery-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gutter);
+}
+
+.tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: var(--paper-dim);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.tile-img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  transition: transform 0.5s var(--ease), opacity 0.4s var(--ease);
+  animation: fadeIn 0.5s var(--ease);
+}
+
+.tile:hover .tile-img {
+  transform: scale(1.03);
+}
+
+/* Caption fades in on hover, overlaid at the bottom of the tile. */
+.tile-caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 28px 16px 14px;
+  background: linear-gradient(to top, rgba(20, 19, 17, 0.7), rgba(20, 19, 17, 0));
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
+  text-align: left;
+  pointer-events: none;
+}
+
+.tile:hover .tile-caption {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Touch devices: no hover, so always show a subtle caption if present. */
+@media (hover: none) {
+  .tile-caption {
+    opacity: 1;
+    transform: none;
+  }
+}

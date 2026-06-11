@@ -1,0 +1,200 @@
+/* Private album page — password gate + download-all flow.
+   Quiet editorial aesthetic, paper-white, generous whitespace. */
+
+/* ---- Password gate ---- */
+.private-gate {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: clamp(60px, 14vh, 160px);
+}
+
+.gate-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+
+.gate-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(24px, 3.5vw, 34px);
+  letter-spacing: 0.01em;
+  margin: 0 0 10px;
+  color: var(--ink);
+}
+
+.gate-hint {
+  color: var(--ink-soft);
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  margin: 0 0 28px;
+}
+
+.gate-input {
+  width: 100%;
+  padding: 13px 14px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s var(--ease);
+}
+
+.gate-input::placeholder {
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+}
+
+.gate-input:focus {
+  border-color: var(--ink-soft);
+}
+
+.gate-submit {
+  margin-top: 16px;
+  width: 100%;
+  padding: 12px 18px;
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: opacity 0.2s var(--ease);
+}
+
+.gate-submit:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.gate-error {
+  color: #9a3b2e;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  margin: 18px 0 0;
+}
+
+.private-notfound {
+  text-align: center;
+  padding-top: clamp(60px, 12vh, 140px);
+}
+
+/* ---- Download All ---- */
+.download-all {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 clamp(28px, 5vw, 48px);
+  min-height: 44px;
+}
+
+.download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 24px;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease), opacity 0.2s var(--ease);
+}
+
+.download-btn:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.download-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  background: transparent;
+  color: var(--ink);
+}
+
+.download-btn--ready {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.download-ready {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.download-note {
+  color: var(--ink-faint);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  font-style: italic;
+  font-family: var(--font-display);
+}
+
+.download-error-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.download-error {
+  color: #9a3b2e;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.download-btn--retry {
+  font-size: 11px;
+  padding: 9px 20px;
+}
+
+.private-load-error {
+  text-align: center;
+  color: #9a3b2e;
+  font-size: 14px;
+  margin: 24px 0;
+}
+
+/* Small inline spinner for the preparing state. */
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ink-faint);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex: none;
+}
+
+/* Per-image full-resolution download link inside the lightbox caption. */
+.lightbox-download {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 18px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--paper);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: opacity 0.2s var(--ease);
+}
+
+.lightbox-download:hover {
+  opacity: 0.7;
+}

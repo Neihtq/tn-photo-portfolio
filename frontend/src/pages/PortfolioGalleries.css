@@ -1,0 +1,20 @@
+/* Portfolio Galleries — quiet editorial category index.
+   Generous whitespace so the highlight cards have room to breathe. */
+
+.portfolio-galleries {
+  padding-top: var(--nav-h);
+}
+
+.portfolio-galleries .page-title {
+  margin-bottom: clamp(28px, 6vw, 64px);
+}
+
+.portfolio-empty {
+  text-align: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 20px;
+  color: var(--ink-faint);
+  letter-spacing: 0.02em;
+  margin: clamp(48px, 12vw, 120px) 0;
+}

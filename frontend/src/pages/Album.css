@@ -1,0 +1,32 @@
+/* Album page — full-width masonry under a quiet top-center header.
+   Tokens come from styles/theme.css; .content, .page-title, .page-subtitle,
+   and .spinner are shared. Keep this airy and paper-white. */
+
+.album-page {
+  background: var(--paper);
+}
+
+.album-header {
+  text-align: center;
+  margin: clamp(28px, 6vw, 64px) auto clamp(28px, 5vw, 48px);
+  max-width: 60ch;
+}
+
+.album-header .page-subtitle {
+  margin-top: 10px;
+  color: var(--ink-soft);
+}
+
+/* Quiet 404 / missing-album state */
+.album-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
+
+.album-missing {
+  font-family: var(--font-sans);
+  color: var(--ink-faint);
+  letter-spacing: 0.02em;
+}

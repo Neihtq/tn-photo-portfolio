@@ -1,0 +1,200 @@
+/* Album editor — image grid + privacy/share bits. Reuses the shared admin
+   primitives (.admin-card, .admin-input, .admin-btn, .admin-field, .admin-label)
+   defined alongside the other admin pages. Quiet editorial, paper-white. */
+
+.album-editor {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 var(--page-pad) 80px;
+}
+
+/* select shares .admin-input styling but needs a little native affordance */
+.admin-select {
+  appearance: auto;
+  cursor: pointer;
+}
+
+/* ---------- privacy toggle ---------- */
+.ae-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.ae-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+.ae-toggle .admin-label {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.ae-private {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--paper);
+}
+
+.ae-share {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ae-share-url {
+  display: block;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+/* ---------- images header + sort ---------- */
+.ae-images-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ae-sort {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.ae-sort-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ae-sort-btns .admin-btn {
+  padding: 7px 14px;
+}
+
+/* ---------- image grid ---------- */
+.ae-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--gutter);
+}
+
+.ae-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #fff;
+}
+
+.ae-tile-thumb {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.ae-thumb-btn {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: none;
+  background: var(--paper-dim);
+  border-radius: 2px;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+}
+
+.ae-thumb-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.2s var(--ease);
+}
+
+.ae-thumb-btn:hover:not(:disabled) img {
+  opacity: 0.82;
+}
+
+.ae-thumb-btn:disabled {
+  cursor: default;
+}
+
+.ae-thumb-badge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: var(--ink);
+  border-radius: 2px;
+}
+
+.ae-caption {
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.ae-tile-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.ae-icon-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  transition: border-color 0.2s var(--ease), opacity 0.2s var(--ease);
+}
+
+.ae-icon-btn:hover:not(:disabled) {
+  border-color: var(--ink-soft);
+}
+
+.ae-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ae-icon-danger:hover:not(:disabled) {
+  border-color: #9a3a2f;
+  color: #9a3a2f;
+}
+
+@media (max-width: 560px) {
+  .ae-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}

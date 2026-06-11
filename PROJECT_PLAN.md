@@ -168,12 +168,13 @@ Legend: [ ] todo · [~] in progress · [x] done
 - [x] **Phase 3 — Admin API + auth**: login, settings, categories, albums, images CRUD, reorder, sort ✓.
 - [x] **Phase 4 — Private albums + download service**: unlock, async zip worker, 10-min TTL cleanup, single-image original download ✓.
   - **Backend: 8/8 integration tests pass (Node test runner + Fastify inject + sharp).** tsc clean.
-- [ ] **Phase 5 — Frontend foundation**: Vite+TS, router, API client, NavBar, Masonry, Lightbox primitives, styles/theme.
-- [ ] **Phase 6 — Public pages**: Home, Portfolio Galleries, Albums, Album w/ infinite scroll + lightbox.
-- [ ] **Phase 7 — Private album page**: password gate, download-all poll UX, per-image download.
-- [ ] **Phase 8 — Admin UI**: login + all management screens.
-- [ ] **Phase 9 — Docker/nginx**: backend Dockerfile, frontend build, nginx conf, docker-compose with persistent volume, .env.example.
-- [ ] **Phase 10 — Docs + polish**: README deploy guide (incl. NPM proxy host setup), seed/demo data, final test pass.
+- [x] **Phase 5 — Frontend foundation**: Vite+TS ✓, router ✓, API client ✓, NavBar ✓, Masonry (Gallery) ✓, Lightbox ✓, CardGrid ✓, StickyInstagram ✓, infinite-scroll hook ✓, theme ✓.
+- [x] **Phase 6 — Public pages**: Home, Portfolio Galleries, Albums, Album w/ infinite scroll + lightbox ✓ (built via parallel workflow).
+- [x] **Phase 7 — Private album page**: password gate, download-all poll UX, per-image download ✓.
+- [x] **Phase 8 — Admin UI**: login + all management screens (settings/signature, categories, albums, album editor, home gallery) ✓.
+  - **Frontend: `npm run build` passes (72 modules, tsc clean). Adversarial spec review: 0 blockers, 1 major (CSS coupling) fixed.**
+- [x] **Phase 9 — Docker/nginx**: backend Dockerfile ✓, frontend Dockerfile (build→nginx) ✓, nginx conf (SPA + /api proxy) ✓, docker-compose (Finch-compatible) ✓, .env.example ✓.
+- [~] **Phase 10 — Docs + polish**: README deploy guide (TrueNAS + NPM + Finch) ✓. Live HTTP smoke test of backend ✓. Remaining: container build verification, final commit.
 
 **Milestone pings (ntfy):** after Phase 4 (backend complete), after Phase 8 (frontend complete), after Phase 9 (deployable), and on any blocker needing manual input (e.g. real TrueNAS paths, NPM config, signature PNG asset).
 

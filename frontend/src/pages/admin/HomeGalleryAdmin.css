@@ -1,0 +1,182 @@
+/* Home gallery admin page. Reuses the genuinely shared admin primitives
+   (.admin-card, .admin-btn, .admin-input, .admin-field, .admin-label, defined
+   in AdminApp.css) and owns its page-specific helpers below plus the
+   list/reorder layout. Quiet editorial, paper-white, generous whitespace. */
+
+.home-gallery-admin {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 var(--page-pad) 80px;
+}
+
+/* ---------- page-local helpers (own their styling, no cross-page coupling) ---------- */
+.home-gallery-admin .admin-card-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: 0.01em;
+  margin: 0;
+  color: var(--ink);
+}
+
+.home-gallery-admin .admin-hint {
+  margin: -6px 0 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.home-gallery-admin .admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.home-gallery-admin .admin-btn-file {
+  /* file input is hidden inside this label */
+  margin: 0;
+}
+
+.home-gallery-admin .admin-error {
+  color: #9a3a2f;
+  font-size: 14px;
+  margin: 0 auto clamp(16px, 3vw, 24px);
+  max-width: 760px;
+}
+
+.home-gallery-admin .admin-empty {
+  margin: 0;
+  color: var(--ink-faint);
+  font-style: italic;
+  font-family: var(--font-display);
+  font-size: 16px;
+}
+
+.hga-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.hga-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hga-sort .admin-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.hga-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hga-item {
+  display: grid;
+  grid-template-columns: auto 88px 1fr auto;
+  align-items: center;
+  gap: 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--paper);
+}
+
+.hga-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hga-arrow {
+  width: 32px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  transition: border-color 0.2s var(--ease), opacity 0.2s var(--ease);
+}
+
+.hga-arrow:hover:not(:disabled) {
+  border-color: var(--ink-soft);
+}
+
+.hga-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.hga-thumb {
+  width: 88px;
+  height: 88px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--paper-dim);
+}
+
+.hga-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hga-caption {
+  min-width: 0;
+}
+
+.hga-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hga-item-actions .admin-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+@media (max-width: 620px) {
+  .hga-item {
+    grid-template-columns: auto 72px 1fr;
+    grid-template-areas:
+      "reorder thumb caption"
+      "actions actions actions";
+    row-gap: 14px;
+  }
+
+  .hga-reorder {
+    grid-area: reorder;
+  }
+
+  .hga-thumb {
+    grid-area: thumb;
+    width: 72px;
+    height: 72px;
+  }
+
+  .hga-caption {
+    grid-area: caption;
+  }
+
+  .hga-item-actions {
+    grid-area: actions;
+    flex-direction: row;
+  }
+}

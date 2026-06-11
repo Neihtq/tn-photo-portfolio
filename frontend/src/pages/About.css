@@ -1,0 +1,17 @@
+.about-body {
+  max-width: 620px;
+  margin: clamp(20px, 5vw, 48px) auto 0;
+  text-align: center;
+}
+
+.about-body p {
+  font-family: var(--font-display);
+  font-size: clamp(18px, 2.2vw, 22px);
+  line-height: 1.7;
+  color: var(--ink-soft);
+  margin: 0 0 1.4em;
+}
+
+.about-body p:last-child {
+  margin-bottom: 0;
+}

@@ -1,0 +1,44 @@
+.ig-sticky {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 10px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-right: none;
+  color: var(--ink-soft);
+  transition: color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.ig-sticky:hover {
+  color: var(--ink);
+  background: var(--paper-dim);
+}
+
+.ig-handle {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.ig-icon {
+  flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+  .ig-sticky {
+    padding: 10px 7px;
+    gap: 8px;
+  }
+  .ig-handle {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+}

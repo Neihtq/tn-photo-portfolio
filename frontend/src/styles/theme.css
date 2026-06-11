@@ -1,0 +1,108 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&display=swap");
+
+/* Design tokens + global base. Aesthetic: quiet editorial photography portfolio.
+   Paper-white background, generous whitespace, seamless (chromeless) navigation. */
+
+:root {
+  --paper: #f7f5f0; /* paper white, not pure white */
+  --paper-dim: #efece5;
+  --ink: #1a1a18;
+  --ink-soft: #55524c;
+  --ink-faint: #8a857c;
+  --line: #e2ddd3;
+  --accent: #1a1a18;
+
+  --font-display: "Cormorant Garamond", "Times New Roman", serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  --gutter: 14px; /* masonry spacing between pictures */
+  --page-pad: clamp(16px, 4vw, 56px);
+  --nav-h: 72px;
+
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Page title shown top-center on section pages. */
+.page-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(28px, 4.5vw, 46px);
+  letter-spacing: 0.01em;
+  text-align: center;
+  margin: clamp(24px, 5vw, 56px) 0 8px;
+  color: var(--ink);
+}
+
+.page-subtitle {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  margin: 0 0 clamp(20px, 4vw, 40px);
+  font-style: italic;
+  font-family: var(--font-display);
+}
+
+.content {
+  padding: 0 var(--page-pad) 80px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+/* Fade-in used across galleries & lightbox */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--line);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin: 32px auto;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

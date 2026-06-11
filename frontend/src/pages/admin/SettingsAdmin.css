@@ -1,0 +1,154 @@
+/* Settings admin page. Defines the shared admin primitives (.admin-card,
+   .admin-input, .admin-btn) the admin section reuses. Quiet editorial, paper-white. */
+
+.settings-admin {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 var(--page-pad) 80px;
+}
+
+.admin-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: clamp(20px, 4vw, 36px);
+  margin: 0 auto clamp(20px, 4vw, 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.admin-card-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: 0.01em;
+  margin: 0;
+  color: var(--ink);
+}
+
+.admin-hint {
+  margin: -6px 0 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-label {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.admin-input {
+  width: 100%;
+  padding: 11px 13px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  transition: border-color 0.2s var(--ease);
+}
+
+.admin-input:focus {
+  outline: none;
+  border-color: var(--ink-soft);
+}
+
+.admin-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 22px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--paper);
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: opacity 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.admin-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.admin-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.admin-btn-file {
+  /* file input is hidden inside this label */
+  margin: 0;
+}
+
+.admin-btn-danger {
+  color: var(--ink);
+  background: transparent;
+  border-color: var(--line);
+}
+
+.admin-btn-danger:hover:not(:disabled) {
+  border-color: var(--ink-soft);
+  opacity: 1;
+}
+
+.admin-saved {
+  font-size: 13px;
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+  animation: fadeIn 0.3s var(--ease);
+}
+
+.admin-error {
+  color: #9a3a2f;
+  font-size: 14px;
+  margin: 0 auto clamp(16px, 3vw, 24px);
+  max-width: 640px;
+}
+
+.admin-empty {
+  margin: 0;
+  color: var(--ink-faint);
+  font-style: italic;
+  font-family: var(--font-display);
+  font-size: 16px;
+}
+
+.signature-preview {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--paper);
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.signature-preview img {
+  max-height: 120px;
+  width: auto;
+  object-fit: contain;
+}
