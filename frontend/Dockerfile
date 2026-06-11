@@ -1,9 +1,10 @@
 # Frontend: build the Vite SPA, then serve it via nginx (which also proxies /api).
+# Build context is the REPO ROOT (so we can also copy nginx/default.conf).
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
-COPY package.json package-lock.json* ./
+COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install
-COPY . .
+COPY frontend/ ./
 RUN npm run build
 
 FROM nginx:1.27-alpine AS runtime

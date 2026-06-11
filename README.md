@@ -61,6 +61,13 @@ Edit `.env`:
   cd backend && npm install
   node -e "require('argon2').hash('YOUR_PASSWORD').then(h=>console.log(h))"
   ```
+  **Important:** the hash contains `$` characters, which Docker/Finch Compose
+  treats as variable interpolation. In `.env` you MUST escape each `$` as `$$`,
+  e.g. `$argon2id$v=19$...` becomes `ADMIN_PASSWORD_HASH=$$argon2id$$v=19$$...`.
+  (Otherwise admin login silently returns 401.) Quick escape of an existing hash:
+  ```bash
+  printf '%s' "$THE_HASH" | sed 's/\$/$$/g'
+  ```
 - `DATA_PATH` — host path for persistent data. On TrueNAS, use a dataset path,
   e.g. `/mnt/tank/apps/photo-portfolio/data`. **This is what survives rebuilds.**
 - `WEB_PORT` — host port nginx listens on (default `8080`).
@@ -78,6 +85,15 @@ finch compose up -d --build
 This starts:
 - `api` — the backend, with `DATA_PATH` mounted at `/data`.
 - `web` — nginx serving the SPA and proxying `/api` → `api:4000`, published on `WEB_PORT`.
+
+> If you ever recreate **only** the `api` container while `web` keeps running
+> (e.g. `compose up -d --force-recreate api`), also restart web so nginx picks
+> up the backend's new IP: `docker compose restart web`. A normal full
+> `compose up`/`down`+`up` doesn't need this.
+
+**Verified end-to-end on Finch:** image build, SPA + `/api` proxy, admin login,
+upload → sharp variant generation, public serving, and **data persistence across
+`compose down`/`up`** (album + images + DB survive on the `./data` volume).
 
 ### 3. Point Nginx Proxy Manager at it
 

@@ -1,0 +1,11 @@
+# Keep build contexts lean and never ship local state into images.
+**/node_modules
+**/dist
+**/build
+data/
+backend/data/
+.git
+.env
+*.log
+**/.DS_Store
+.claude/
