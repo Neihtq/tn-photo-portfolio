@@ -68,7 +68,7 @@ export interface AdminAlbum {
   subtitle: string;
   slug: string;
   thumbnail_image_id: number | null;
-  cover_image_id: number | null;
+  has_cover: number;
   is_private: number;
   sort_order: number;
   image_count?: number;

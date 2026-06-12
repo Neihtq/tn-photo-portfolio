@@ -55,7 +55,7 @@ export function migrate(): void {
       subtitle           TEXT NOT NULL DEFAULT '',
       slug               TEXT NOT NULL UNIQUE,
       thumbnail_image_id INTEGER REFERENCES images(id) ON DELETE SET NULL,
-      cover_image_id     INTEGER REFERENCES images(id) ON DELETE SET NULL,
+      has_cover          INTEGER NOT NULL DEFAULT 0,
       is_private         INTEGER NOT NULL DEFAULT 0,
       password_hash      TEXT,
       sort_order         INTEGER NOT NULL DEFAULT 0,
@@ -83,7 +83,10 @@ export function migrate(): void {
 
   // Lightweight column migrations for databases created before a column existed.
   // (CREATE TABLE IF NOT EXISTS won't add columns to an existing table.)
-  addColumnIfMissing("albums", "cover_image_id", "INTEGER REFERENCES images(id) ON DELETE SET NULL");
+  // Note: an earlier build used `cover_image_id`; covers are now dedicated
+  // uploaded files tracked by `has_cover`. The old column (if present) is left
+  // in place — SQLite can't easily drop columns and it's harmless when unused.
+  addColumnIfMissing("albums", "has_cover", "INTEGER NOT NULL DEFAULT 0");
 }
 
 /** Add a column to a table only if it isn't already present. Idempotent. */

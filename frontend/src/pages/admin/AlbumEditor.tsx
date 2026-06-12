@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../../api/client";
 import type { AdminAlbum, AdminCategory, AdminImage } from "../../api/types";
-import { ImagePicker } from "../../components/ImagePicker";
 import "./AlbumEditor.css";
 
 type SortBy = "name" | "date";
@@ -36,8 +35,11 @@ export function AlbumEditor() {
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Which picker modal is open: album cover (from any image) or none.
-  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  // Dedicated album-cover upload state.
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [coverPct, setCoverPct] = useState(0);
+  const [coverVersion, setCoverVersion] = useState(0); // cache-bust the preview
+  const coverFileRef = useRef<HTMLInputElement>(null);
   // Index of the image currently being dragged (for drag-to-reorder).
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
@@ -138,17 +140,36 @@ export function AlbumEditor() {
     }
   }
 
-  async function onSetCover(imageId: number | null) {
-    setCoverPickerOpen(false);
-    setBusy(true);
+  async function onUploadCover(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverBusy(true);
+    setCoverPct(0);
     setError(null);
     try {
-      await api.updateAlbum(albumId, { coverImageId: imageId });
-      setAlbum((prev) => (prev ? { ...prev, cover_image_id: imageId } : prev));
+      await api.uploadCover(albumId, file, setCoverPct);
+      setAlbum((prev) => (prev ? { ...prev, has_cover: 1 } : prev));
+      setCoverVersion((v) => v + 1);
     } catch {
-      setError("Could not set cover image.");
+      setError("Could not upload cover image.");
     } finally {
-      setBusy(false);
+      setCoverBusy(false);
+      setCoverPct(0);
+      if (coverFileRef.current) coverFileRef.current.value = "";
+    }
+  }
+
+  async function onDeleteCover() {
+    setCoverBusy(true);
+    setError(null);
+    try {
+      await api.deleteCover(albumId);
+      setAlbum((prev) => (prev ? { ...prev, has_cover: 0 } : prev));
+      setCoverVersion((v) => v + 1);
+    } catch {
+      setError("Could not remove cover image.");
+    } finally {
+      setCoverBusy(false);
     }
   }
 
@@ -358,38 +379,55 @@ export function AlbumEditor() {
       <section className="admin-card">
         <h2 className="admin-card-title">Cover image</h2>
         <p className="admin-hint">
-          Shown full-width behind the album title on the album page. A horizontal
-          (landscape) image works best.
+          A dedicated cover uploaded just for this album — shown full-width behind
+          the title on the album page. It is kept separate from the gallery (never
+          listed among the photos) and is not downloadable. A horizontal (landscape)
+          image works best. Uploaded at high quality.
         </p>
         <div className="ae-cover-row">
           <div className="ae-cover-preview">
-            {album.cover_image_id != null ? (
-              <img src={api.thumbUrl(album.cover_image_id)} alt="Album cover" />
+            {album.has_cover ? (
+              <img
+                src={`/api/admin/albums/${albumId}/cover?v=${coverVersion}`}
+                alt="Album cover"
+              />
             ) : (
               <span className="admin-empty">No cover set.</span>
             )}
           </div>
           <div className="admin-actions">
-            <button
-              type="button"
-              className="admin-btn"
-              onClick={() => setCoverPickerOpen(true)}
-              disabled={busy}
-            >
-              {album.cover_image_id != null ? "Change cover" : "Choose cover"}
-            </button>
-            {album.cover_image_id != null && (
+            <label className="admin-btn admin-btn-file">
+              {coverPct > 0 && coverPct < 100
+                ? `Uploading… ${coverPct}%`
+                : album.has_cover
+                ? "Replace cover"
+                : "Upload cover"}
+              <input
+                ref={coverFileRef}
+                type="file"
+                accept="image/*"
+                onChange={onUploadCover}
+                disabled={coverBusy}
+                hidden
+              />
+            </label>
+            {album.has_cover && (
               <button
                 type="button"
                 className="admin-btn admin-btn-danger"
-                onClick={() => void onSetCover(null)}
-                disabled={busy}
+                onClick={() => void onDeleteCover()}
+                disabled={coverBusy}
               >
                 Remove cover
               </button>
             )}
           </div>
         </div>
+        {coverPct > 0 && coverPct < 100 && (
+          <div className="upload-progress" role="progressbar" aria-valuenow={coverPct}>
+            <div className="upload-progress-bar" style={{ width: `${coverPct}%` }} />
+          </div>
+        )}
       </section>
 
       <section className="admin-card">
@@ -530,16 +568,6 @@ export function AlbumEditor() {
           </>
         )}
       </section>
-
-      {coverPickerOpen && (
-        <ImagePicker
-          title="Choose album cover (landscape works best)"
-          selectedId={album.cover_image_id}
-          allowClear={album.cover_image_id != null}
-          onPick={(id) => void onSetCover(id)}
-          onClose={() => setCoverPickerOpen(false)}
-        />
-      )}
     </div>
   );
 }

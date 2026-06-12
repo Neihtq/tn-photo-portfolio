@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import fs from "node:fs";
 import { db } from "../db.js";
-import { fullPath, thumbPath, originalPath } from "../images.js";
+import { fullPath, thumbPath, originalPath, coverPath } from "../images.js";
 import { getSetting } from "../util.js";
 import { hasAlbumAccess } from "../auth.js";
 
@@ -120,15 +120,24 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
     const album = db
       .prepare("SELECT * FROM albums WHERE slug = ? AND is_private = 0")
       .get(req.params.slug) as
-      | { id: number; name: string; subtitle: string; cover_image_id: number | null }
+      | { id: number; name: string; subtitle: string; has_cover: number }
       | undefined;
     if (!album) return reply.code(404).send({ error: "album_not_found" });
     return {
       name: album.name,
       subtitle: album.subtitle,
       slug: req.params.slug,
-      cover: album.cover_image_id ? `/api/images/${album.cover_image_id}/full` : null,
+      cover: album.has_cover ? `/api/albums/${req.params.slug}/cover` : null,
     };
+  });
+
+  // Serve a public album's cover image inline (never as an attachment).
+  app.get<{ Params: { slug: string } }>("/api/albums/:slug/cover", (req, reply) => {
+    const album = db
+      .prepare("SELECT id, has_cover FROM albums WHERE slug = ? AND is_private = 0")
+      .get(req.params.slug) as { id: number; has_cover: number } | undefined;
+    if (!album || !album.has_cover) return reply.code(404).send({ error: "no_cover" });
+    return sendFile(reply, coverPath(album.id), "image/webp");
   });
 
   // Paginated images for a public album.

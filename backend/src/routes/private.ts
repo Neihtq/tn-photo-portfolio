@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import fs from "node:fs";
 import { db } from "../db.js";
-import { albumImagesPage } from "./public.js";
+import { albumImagesPage, sendFile } from "./public.js";
+import { coverPath } from "../images.js";
 import { hasAlbumAccess, issueAlbumCookie, verifyPassword } from "../auth.js";
 import { startAlbumZip, getJob, sweepExpiredZips } from "../zip.js";
 import { now } from "../util.js";
@@ -10,7 +11,7 @@ interface PrivAlbum {
   id: number;
   name: string;
   subtitle: string;
-  cover_image_id: number | null;
+  has_cover: number;
   password_hash: string | null;
 }
 
@@ -40,8 +41,17 @@ export async function privateRoutes(app: FastifyInstance): Promise<void> {
       name: album.name,
       subtitle: album.subtitle,
       slug: req.params.slug,
-      cover: album.cover_image_id ? `/api/images/${album.cover_image_id}/full` : null,
+      cover: album.has_cover ? `/api/private/${req.params.slug}/cover` : null,
     };
+  });
+
+  // Serve a private album's cover inline — requires an unlock token.
+  app.get<{ Params: { slug: string } }>("/api/private/:slug/cover", (req, reply) => {
+    const album = getPrivateAlbum(req.params.slug);
+    if (!album) return reply.code(404).send({ error: "album_not_found" });
+    if (!hasAlbumAccess(req, album.id)) return reply.code(401).send({ error: "locked" });
+    if (!album.has_cover) return reply.code(404).send({ error: "no_cover" });
+    return sendFile(reply, coverPath(album.id), "image/webp");
   });
 
   // Paginated images — requires an unlock token.
@@ -104,7 +114,7 @@ export async function privateRoutes(app: FastifyInstance): Promise<void> {
 function getPrivateAlbum(slug: string): PrivAlbum | undefined {
   return db
     .prepare(
-      "SELECT id, name, subtitle, cover_image_id, password_hash FROM albums WHERE slug = ? AND is_private = 1",
+      "SELECT id, name, subtitle, has_cover, password_hash FROM albums WHERE slug = ? AND is_private = 1",
     )
     .get(slug) as PrivAlbum | undefined;
 }

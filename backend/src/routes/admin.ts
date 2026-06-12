@@ -12,7 +12,7 @@ import {
   clearAdminCookie,
   hashPassword,
 } from "../auth.js";
-import { processImage, safeExt, originalPath, deleteImageFiles } from "../images.js";
+import { processImage, safeExt, originalPath, deleteImageFiles, coverPath } from "../images.js";
 import { slugify, uniqueSlug, getSetting, setSetting, now } from "../util.js";
 
 interface ImageRow {
@@ -273,7 +273,6 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       subtitle?: string;
       categoryId?: number | null;
       thumbnailImageId?: number | null;
-      coverImageId?: number | null;
       isPrivate?: boolean;
       password?: string | null;
     };
@@ -295,8 +294,6 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       db.prepare("UPDATE albums SET category_id=? WHERE id=?").run(b.categoryId, id);
     if (b.thumbnailImageId !== undefined)
       db.prepare("UPDATE albums SET thumbnail_image_id=? WHERE id=?").run(b.thumbnailImageId, id);
-    if (b.coverImageId !== undefined)
-      db.prepare("UPDATE albums SET cover_image_id=? WHERE id=?").run(b.coverImageId, id);
     if (b.isPrivate !== undefined)
       db.prepare("UPDATE albums SET is_private=? WHERE id=?").run(b.isPrivate ? 1 : 0, id);
     // password: non-empty string sets it, null clears it, undefined leaves as-is.
@@ -307,10 +304,51 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
+  // Upload/replace an album's cover — a dedicated, high-quality hero image kept
+  // separate from the gallery (never listed among album photos, never downloadable).
+  app.post<{ Params: { id: string } }>("/api/admin/albums/:id/cover", guard, async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!db.prepare("SELECT 1 FROM albums WHERE id=?").get(id)) {
+      return reply.code(404).send({ error: "album_not_found" });
+    }
+    const file = await req.file();
+    if (!file) return reply.code(400).send({ error: "no_file" });
+    const buf = await file.toBuffer();
+    await sharp(buf, { failOn: "none" })
+      .rotate()
+      .resize(config.coverMaxEdge, config.coverMaxEdge, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: config.coverQuality })
+      .toFile(coverPath(id));
+    db.prepare("UPDATE albums SET has_cover=1 WHERE id=?").run(id);
+    return { ok: true };
+  });
+
+  app.delete<{ Params: { id: string } }>("/api/admin/albums/:id/cover", guard, async (req) => {
+    const id = Number(req.params.id);
+    await fs.promises.rm(coverPath(id), { force: true }).catch(() => {});
+    db.prepare("UPDATE albums SET has_cover=0 WHERE id=?").run(id);
+    return { ok: true };
+  });
+
+  // Serve the cover to the admin editor preview (auth-guarded; works for both
+  // public and private albums without needing a visitor unlock token).
+  app.get<{ Params: { id: string } }>("/api/admin/albums/:id/cover", guard, (req, reply) => {
+    const id = Number(req.params.id);
+    const row = db.prepare("SELECT has_cover FROM albums WHERE id=?").get(id) as
+      | { has_cover: number }
+      | undefined;
+    if (!row || !row.has_cover) return reply.code(404).send({ error: "no_cover" });
+    if (!fs.existsSync(coverPath(id))) return reply.code(404).send({ error: "no_cover" });
+    reply.header("Content-Type", "image/webp");
+    reply.header("Cache-Control", "no-store");
+    return reply.send(fs.createReadStream(coverPath(id)));
+  });
+
   app.delete<{ Params: { id: string } }>("/api/admin/albums/:id", guard, async (req) => {
     const id = Number(req.params.id);
     const images = db.prepare("SELECT id, ext FROM images WHERE album_id = ?").all(id) as ImageRow[];
     for (const img of images) await deleteImageFiles(img.id, img.ext);
+    await fs.promises.rm(coverPath(id), { force: true }).catch(() => {});
     db.prepare("DELETE FROM albums WHERE id = ?").run(id);
     return { ok: true };
   });

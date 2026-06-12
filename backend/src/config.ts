@@ -28,11 +28,15 @@ export const config = {
   fullDir: path.join(DATA_DIR, "full"),
   thumbDir: path.join(DATA_DIR, "thumb"),
   signatureDir: path.join(DATA_DIR, "signature"),
+  coversDir: path.join(DATA_DIR, "covers"),
   zipsDir: path.join(DATA_DIR, "tmp-zips"),
 
   // Image processing
   fullMaxEdge: envInt("FULL_MAX_EDGE", 2560),
   fullQuality: envInt("FULL_QUALITY", 82),
+  // Album cover is the large full-bleed hero → keep it bigger + higher quality.
+  coverMaxEdge: envInt("COVER_MAX_EDGE", 2880),
+  coverQuality: envInt("COVER_QUALITY", 88),
   thumbMaxEdge: envInt("THUMB_MAX_EDGE", 800),
   thumbQuality: envInt("THUMB_QUALITY", 78),
 
@@ -60,6 +64,7 @@ export function ensureDirs(): void {
     config.fullDir,
     config.thumbDir,
     config.signatureDir,
+    config.coversDir,
     config.zipsDir,
   ]) {
     fs.mkdirSync(dir, { recursive: true });

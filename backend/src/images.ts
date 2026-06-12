@@ -18,6 +18,10 @@ export function fullPath(id: number): string {
 export function thumbPath(id: number): string {
   return path.join(config.thumbDir, `${id}.webp`);
 }
+/** Album cover is a dedicated uploaded file (not a gallery image), keyed by album id. */
+export function coverPath(albumId: number): string {
+  return path.join(config.coversDir, `${albumId}.webp`);
+}
 
 export interface ProcessedImage {
   width: number;

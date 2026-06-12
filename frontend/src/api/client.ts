@@ -80,10 +80,13 @@ function upload<T>(
 }
 
 function jsonInit(method: string, body?: unknown): RequestInit {
+  // Only set the JSON content-type when there's actually a body — Fastify rejects
+  // an empty body when content-type is application/json (bodyless POSTs 400'd).
+  if (body === undefined) return { method };
   return {
     method,
     headers: { "content-type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: JSON.stringify(body),
   };
 }
 
@@ -168,12 +171,20 @@ export const api = {
       subtitle?: string;
       categoryId?: number | null;
       thumbnailImageId?: number | null;
-      coverImageId?: number | null;
       isPrivate?: boolean;
       password?: string | null;
     },
   ) => req(`/api/admin/albums/${id}`, jsonInit("PUT", body)),
   deleteAlbum: (id: number) => req(`/api/admin/albums/${id}`, { method: "DELETE" }),
+
+  // Album cover: a dedicated high-quality upload, kept out of the gallery.
+  uploadCover: (albumId: number, file: File, onProgress?: (p: number) => void) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return upload(`/api/admin/albums/${albumId}/cover`, fd, onProgress);
+  },
+  deleteCover: (albumId: number) =>
+    req(`/api/admin/albums/${albumId}/cover`, { method: "DELETE" }),
   reorderAlbums: (order: number[]) => req("/api/admin/albums/reorder", jsonInit("POST", { order })),
 
   uploadImages: (

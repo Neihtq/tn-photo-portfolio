@@ -407,8 +407,8 @@ test("admin images/all powers the thumbnail picker and category thumbnail set", 
   assert.ok(people && people.thumbnail === `/api/images/${imgId}/thumb`);
 });
 
-test("album cover image: set via update, exposed on public album metadata", async () => {
-  // Create a public album + image.
+test("album cover: dedicated upload, served inline, not in gallery, deletable", async () => {
+  // Create a public album (no gallery images needed).
   let res = await app.inject({
     method: "POST",
     url: "/api/admin/albums",
@@ -417,37 +417,81 @@ test("album cover image: set via update, exposed on public album metadata", asyn
   });
   const albumId = res.json().id;
   const slug = res.json().slug;
-  const mp = multipart({}, [{ name: "file", filename: "c.jpg", data: await jpeg(1920, 1080) }]);
+
+  // No cover yet.
+  res = await app.inject({ method: "GET", url: `/api/albums/${slug}` });
+  assert.equal(res.json().cover, null);
+
+  // Upload a dedicated cover.
+  const mp = multipart({}, [{ name: "file", filename: "cover.jpg", data: await jpeg(2400, 1350) }]);
   res = await app.inject({
     method: "POST",
-    url: `/api/admin/images?albumId=${albumId}`,
+    url: `/api/admin/albums/${albumId}/cover`,
     headers: { cookie: adminCookie, ...mp.headers },
     payload: mp.body,
   });
-  const imgId = res.json().created[0];
+  assert.equal(res.statusCode, 200);
+  assert.ok(fs.existsSync(path.join(TMP, "covers", `${albumId}.webp`)), "cover file on disk");
 
-  // Set the cover.
+  // Public metadata now points at the cover endpoint.
+  res = await app.inject({ method: "GET", url: `/api/albums/${slug}` });
+  assert.equal(res.json().cover, `/api/albums/${slug}/cover`);
+
+  // Cover is served inline as webp (NOT an attachment).
+  res = await app.inject({ method: "GET", url: `/api/albums/${slug}/cover` });
+  assert.equal(res.statusCode, 200);
+  assert.match(String(res.headers["content-type"]), /image\/webp/);
+  assert.ok(!String(res.headers["content-disposition"] ?? "").includes("attachment"));
+
+  // The cover is NOT part of the gallery image list.
+  res = await app.inject({ method: "GET", url: `/api/albums/${slug}/images` });
+  assert.equal(res.json().images.length, 0);
+
+  // Delete the cover → metadata reports none, endpoint 404s.
   res = await app.inject({
-    method: "PUT",
-    url: `/api/admin/albums/${albumId}`,
+    method: "DELETE",
+    url: `/api/admin/albums/${albumId}/cover`,
     headers: { cookie: adminCookie },
-    payload: { coverImageId: imgId },
+  });
+  assert.equal(res.statusCode, 200);
+  res = await app.inject({ method: "GET", url: `/api/albums/${slug}` });
+  assert.equal(res.json().cover, null);
+  res = await app.inject({ method: "GET", url: `/api/albums/${slug}/cover` });
+  assert.equal(res.statusCode, 404);
+});
+
+test("private album cover requires unlock", async () => {
+  let res = await app.inject({
+    method: "POST",
+    url: "/api/admin/albums",
+    headers: { cookie: adminCookie },
+    payload: { name: "Priv Cover", isPrivate: true, password: "pw" },
+  });
+  const albumId = res.json().id;
+  const slug = res.json().slug;
+  const mp = multipart({}, [{ name: "file", filename: "pc.jpg", data: await jpeg(2000, 1200) }]);
+  res = await app.inject({
+    method: "POST",
+    url: `/api/admin/albums/${albumId}/cover`,
+    headers: { cookie: adminCookie, ...mp.headers },
+    payload: mp.body,
   });
   assert.equal(res.statusCode, 200);
 
-  // Public album metadata exposes the cover (full variant url).
-  res = await app.inject({ method: "GET", url: `/api/albums/${slug}` });
-  assert.equal(res.json().cover, `/api/images/${imgId}/full`);
+  // Without unlock the cover is locked.
+  res = await app.inject({ method: "GET", url: `/api/private/${slug}/cover` });
+  assert.equal(res.statusCode, 401);
 
-  // Clearing the cover sets it back to null.
+  // After unlock it serves.
   res = await app.inject({
-    method: "PUT",
-    url: `/api/admin/albums/${albumId}`,
-    headers: { cookie: adminCookie },
-    payload: { coverImageId: null },
+    method: "POST",
+    url: `/api/private/${slug}/unlock`,
+    payload: { password: "pw" },
   });
-  res = await app.inject({ method: "GET", url: `/api/albums/${slug}` });
-  assert.equal(res.json().cover, null);
+  const cookie = (res.headers["set-cookie"] as string).split(";")[0];
+  res = await app.inject({ method: "GET", url: `/api/private/${slug}/cover`, headers: { cookie } });
+  assert.equal(res.statusCode, 200);
+  assert.match(String(res.headers["content-type"]), /image\/webp/);
 });
 
 test("album with no title is allowed and gets a stable slug", async () => {
