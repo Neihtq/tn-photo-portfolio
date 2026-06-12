@@ -234,17 +234,18 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{
     Body: {
-      name: string;
+      name?: string;
       subtitle?: string;
       categoryId?: number | null;
       isPrivate?: boolean;
       password?: string;
     };
-  }>("/api/admin/albums", guard, async (req, reply) => {
+  }>("/api/admin/albums", guard, async (req) => {
     const b = req.body ?? ({} as any);
+    // Album title is optional. When empty, derive a slug from a generic base so
+    // the album still has a stable, unique URL.
     const name = (b.name ?? "").trim();
-    if (!name) return reply.code(400).send({ error: "name_required" });
-    const slug = uniqueSlug("albums", slugify(name));
+    const slug = uniqueSlug("albums", slugify(name || "album"));
     const max = (db.prepare("SELECT MAX(sort_order) m FROM albums").get() as { m: number | null }).m ?? 0;
     const passwordHash = b.isPrivate && b.password ? await hashPassword(b.password) : null;
     const info = db
@@ -272,6 +273,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       subtitle?: string;
       categoryId?: number | null;
       thumbnailImageId?: number | null;
+      coverImageId?: number | null;
       isPrivate?: boolean;
       password?: string | null;
     };
@@ -283,14 +285,18 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     if (!album) return reply.code(404).send({ error: "not_found" });
     const b = req.body ?? {};
     if (b.name !== undefined) {
-      const slug = uniqueSlug("albums", slugify(b.name), id);
-      db.prepare("UPDATE albums SET name=?, slug=? WHERE id=?").run(b.name, slug, id);
+      // Title may be cleared; keep a stable non-empty slug regardless.
+      const name = b.name.trim();
+      const slug = uniqueSlug("albums", slugify(name || "album"), id);
+      db.prepare("UPDATE albums SET name=?, slug=? WHERE id=?").run(name, slug, id);
     }
     if (b.subtitle !== undefined) db.prepare("UPDATE albums SET subtitle=? WHERE id=?").run(b.subtitle, id);
     if (b.categoryId !== undefined)
       db.prepare("UPDATE albums SET category_id=? WHERE id=?").run(b.categoryId, id);
     if (b.thumbnailImageId !== undefined)
       db.prepare("UPDATE albums SET thumbnail_image_id=? WHERE id=?").run(b.thumbnailImageId, id);
+    if (b.coverImageId !== undefined)
+      db.prepare("UPDATE albums SET cover_image_id=? WHERE id=?").run(b.coverImageId, id);
     if (b.isPrivate !== undefined)
       db.prepare("UPDATE albums SET is_private=? WHERE id=?").run(b.isPrivate ? 1 : 0, id);
     // password: non-empty string sets it, null clears it, undefined leaves as-is.
@@ -419,6 +425,27 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       )
       .all() as ImageRow[];
     return rows.map(adminImage);
+  });
+
+  // Add already-uploaded images (e.g. from albums) to the home gallery by id.
+  app.post<{ Body: { imageIds: number[] } }>("/api/admin/home/add", guard, async (req) => {
+    const ids = (req.body?.imageIds ?? []).filter((n) => Number.isInteger(n) && n > 0);
+    let base =
+      (db.prepare("SELECT MAX(sort_order) m FROM home_gallery").get() as { m: number | null }).m ?? 0;
+    const added: number[] = [];
+    const tx = db.transaction((list: number[]) => {
+      const exists = db.prepare("SELECT 1 FROM images WHERE id = ?");
+      const insert = db.prepare(
+        "INSERT OR IGNORE INTO home_gallery(image_id, sort_order) VALUES(?, ?)",
+      );
+      for (const id of list) {
+        if (!exists.get(id)) continue;
+        const info = insert.run(id, ++base);
+        if (info.changes > 0) added.push(id);
+      }
+    });
+    tx(ids);
+    return { added };
   });
 
   app.delete<{ Params: { id: string } }>("/api/admin/home/:id", guard, async (req) => {

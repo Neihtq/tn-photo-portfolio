@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../../api/client";
 import type { AdminAlbum, AdminCategory, AdminImage } from "../../api/types";
+import { ImagePicker } from "../../components/ImagePicker";
 import "./AlbumEditor.css";
 
 type SortBy = "name" | "date";
@@ -31,8 +32,14 @@ export function AlbumEditor() {
   const [saved, setSaved] = useState(false);
 
   const [uploading, setUploading] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Which picker modal is open: album cover (from any image) or none.
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  // Index of the image currently being dragged (for drag-to-reorder).
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   const applyAlbum = useCallback((a: AdminAlbum) => {
     setAlbum(a);
@@ -117,16 +124,63 @@ export function AlbumEditor() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setUploading(true);
+    setUploadPct(0);
     setError(null);
     try {
-      await api.uploadImages(files, albumId);
+      await api.uploadImages(files, albumId, setUploadPct);
       await refreshImages();
     } catch {
       setError("Upload failed.");
     } finally {
       setUploading(false);
+      setUploadPct(0);
       if (fileRef.current) fileRef.current.value = "";
     }
+  }
+
+  async function onSetCover(imageId: number | null) {
+    setCoverPickerOpen(false);
+    setBusy(true);
+    setError(null);
+    try {
+      await api.updateAlbum(albumId, { coverImageId: imageId });
+      setAlbum((prev) => (prev ? { ...prev, cover_image_id: imageId } : prev));
+    } catch {
+      setError("Could not set cover image.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Persist a reordered list of image ids for this album.
+  const persistOrder = useCallback(
+    async (next: AdminImage[]) => {
+      setImages(next);
+      setBusy(true);
+      setError(null);
+      try {
+        await api.reorderImages(next.map((i) => i.id), albumId);
+      } catch {
+        setError("Could not save the new order.");
+        await refreshImages();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [albumId, refreshImages],
+  );
+
+  // Drag-to-reorder: drop the dragged tile before the target index.
+  function onDrop(targetIndex: number) {
+    if (dragIndex === null || dragIndex === targetIndex) {
+      setDragIndex(null);
+      return;
+    }
+    const next = images.slice();
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    setDragIndex(null);
+    void persistOrder(next);
   }
 
   async function onSaveCaption(imageId: number, caption: string) {
@@ -155,26 +209,13 @@ export function AlbumEditor() {
   }
 
   // Move an image up/down, then persist the new order for this album.
-  async function onMove(index: number, delta: number) {
+  function onMove(index: number, delta: number) {
     const target = index + delta;
     if (target < 0 || target >= images.length) return;
     const next = images.slice();
     const [moved] = next.splice(index, 1);
     next.splice(target, 0, moved);
-    setImages(next);
-    setBusy(true);
-    setError(null);
-    try {
-      await api.reorderImages(
-        next.map((i) => i.id),
-        albumId,
-      );
-    } catch {
-      setError("Could not save the new order.");
-      await refreshImages();
-    } finally {
-      setBusy(false);
-    }
+    void persistOrder(next);
   }
 
   async function onSort(by: SortBy, dir: SortDir) {
@@ -215,7 +256,7 @@ export function AlbumEditor() {
         <h2 className="admin-card-title">Album details</h2>
 
         <label className="admin-field">
-          <span className="admin-label">Name</span>
+          <span className="admin-label">Name (optional)</span>
           <input
             className="admin-input"
             type="text"
@@ -224,9 +265,11 @@ export function AlbumEditor() {
               setName(e.target.value);
               setSaved(false);
             }}
-            placeholder="Album name"
-            required
+            placeholder="Leave blank for no title"
           />
+          <span className="admin-hint">
+            Albums can have no title — useful when a cover image speaks for itself.
+          </span>
         </label>
 
         <label className="admin-field">
@@ -313,10 +356,47 @@ export function AlbumEditor() {
       </form>
 
       <section className="admin-card">
+        <h2 className="admin-card-title">Cover image</h2>
+        <p className="admin-hint">
+          Shown full-width behind the album title on the album page. A horizontal
+          (landscape) image works best.
+        </p>
+        <div className="ae-cover-row">
+          <div className="ae-cover-preview">
+            {album.cover_image_id != null ? (
+              <img src={api.thumbUrl(album.cover_image_id)} alt="Album cover" />
+            ) : (
+              <span className="admin-empty">No cover set.</span>
+            )}
+          </div>
+          <div className="admin-actions">
+            <button
+              type="button"
+              className="admin-btn"
+              onClick={() => setCoverPickerOpen(true)}
+              disabled={busy}
+            >
+              {album.cover_image_id != null ? "Change cover" : "Choose cover"}
+            </button>
+            {album.cover_image_id != null && (
+              <button
+                type="button"
+                className="admin-btn admin-btn-danger"
+                onClick={() => void onSetCover(null)}
+                disabled={busy}
+              >
+                Remove cover
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="admin-card">
         <div className="ae-images-head">
           <h2 className="admin-card-title">Images</h2>
           <label className="admin-btn admin-btn-file">
-            {uploading ? "Uploading…" : "Upload images"}
+            {uploading ? `Uploading… ${uploadPct}%` : "Upload images"}
             <input
               ref={fileRef}
               type="file"
@@ -328,6 +408,12 @@ export function AlbumEditor() {
             />
           </label>
         </div>
+
+        {uploading && (
+          <div className="upload-progress" role="progressbar" aria-valuenow={uploadPct}>
+            <div className="upload-progress-bar" style={{ width: `${uploadPct}%` }} />
+          </div>
+        )}
 
         <div className="ae-sort">
           <span className="admin-label">Sort all</span>
@@ -370,13 +456,24 @@ export function AlbumEditor() {
         {images.length === 0 ? (
           <p className="admin-empty">No images yet. Upload some to get started.</p>
         ) : (
+          <>
+          <p className="admin-hint ae-drag-hint">Drag images to reorder, or use the arrows.</p>
           <ul className="ae-grid">
             {images.map((img, index) => {
               const isThumb = album.thumbnail_image_id === img.id;
               return (
                 <li
                   key={img.id}
-                  className={isThumb ? "ae-tile ae-tile-thumb" : "ae-tile"}
+                  className={
+                    "ae-tile" +
+                    (isThumb ? " ae-tile-thumb" : "") +
+                    (dragIndex === index ? " ae-tile-dragging" : "")
+                  }
+                  draggable
+                  onDragStart={() => setDragIndex(index)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => onDrop(index)}
+                  onDragEnd={() => setDragIndex(null)}
                 >
                   <button
                     type="button"
@@ -430,8 +527,19 @@ export function AlbumEditor() {
               );
             })}
           </ul>
+          </>
         )}
       </section>
+
+      {coverPickerOpen && (
+        <ImagePicker
+          title="Choose album cover (landscape works best)"
+          selectedId={album.cover_image_id}
+          allowClear={album.cover_image_id != null}
+          onPick={(id) => void onSetCover(id)}
+          onClose={() => setCoverPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -43,6 +43,7 @@ export interface AlbumMeta {
   name: string;
   subtitle: string;
   slug: string;
+  cover: string | null;
 }
 
 export type DownloadStatus =
@@ -67,6 +68,7 @@ export interface AdminAlbum {
   subtitle: string;
   slug: string;
   thumbnail_image_id: number | null;
+  cover_image_id: number | null;
   is_private: number;
   sort_order: number;
   image_count?: number;

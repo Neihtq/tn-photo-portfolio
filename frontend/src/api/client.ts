@@ -38,6 +38,47 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return (ct.includes("application/json") ? await res.json() : (undefined as T)) as T;
 }
 
+/**
+ * Upload via XMLHttpRequest so we can report real upload progress (fetch has no
+ * upload-progress events). Resolves with parsed JSON; rejects with ApiError.
+ */
+function upload<T>(
+  url: string,
+  formData: FormData,
+  onProgress?: (percent: number) => void,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.withCredentials = true;
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(xhr.responseText ? JSON.parse(xhr.responseText) : (undefined as T));
+        } catch {
+          resolve(undefined as T);
+        }
+      } else {
+        let code = `http_${xhr.status}`;
+        try {
+          const j = JSON.parse(xhr.responseText);
+          if (j?.error) code = j.error;
+        } catch {
+          /* ignore */
+        }
+        reject(new ApiError(xhr.status, code));
+      }
+    };
+    xhr.onerror = () => reject(new ApiError(0, "network_error"));
+    xhr.send(formData);
+  });
+}
+
 function jsonInit(method: string, body?: unknown): RequestInit {
   return {
     method,
@@ -114,7 +155,7 @@ export const api = {
   adminAlbum: (id: number) =>
     req<{ album: AdminAlbum; images: AdminImage[] }>(`/api/admin/albums/${id}`),
   createAlbum: (body: {
-    name: string;
+    name?: string;
     subtitle?: string;
     categoryId?: number | null;
     isPrivate?: boolean;
@@ -127,6 +168,7 @@ export const api = {
       subtitle?: string;
       categoryId?: number | null;
       thumbnailImageId?: number | null;
+      coverImageId?: number | null;
       isPrivate?: boolean;
       password?: string | null;
     },
@@ -134,11 +176,15 @@ export const api = {
   deleteAlbum: (id: number) => req(`/api/admin/albums/${id}`, { method: "DELETE" }),
   reorderAlbums: (order: number[]) => req("/api/admin/albums/reorder", jsonInit("POST", { order })),
 
-  uploadImages: (files: FileList | File[], albumId?: number | null) => {
+  uploadImages: (
+    files: FileList | File[],
+    albumId?: number | null,
+    onProgress?: (percent: number) => void,
+  ) => {
     const fd = new FormData();
     for (const f of Array.from(files)) fd.append("file", f);
     const q = albumId != null ? `?albumId=${albumId}` : "";
-    return req<{ created: number[] }>(`/api/admin/images${q}`, { method: "POST", body: fd });
+    return upload<{ created: number[] }>(`/api/admin/images${q}`, fd, onProgress);
   },
   setCaption: (id: number, caption: string) =>
     req(`/api/admin/images/${id}/caption`, jsonInit("PUT", { caption })),
@@ -149,6 +195,8 @@ export const api = {
     req<{ ok: true; count: number }>("/api/admin/images/sort", jsonInit("POST", { albumId, by, dir })),
 
   adminHome: () => req<AdminImage[]>("/api/admin/home"),
+  addToHome: (imageIds: number[]) =>
+    req<{ added: number[] }>("/api/admin/home/add", jsonInit("POST", { imageIds })),
   removeFromHome: (id: number) => req(`/api/admin/home/${id}`, { method: "DELETE" }),
 
   thumbUrl: (id: number) => `/api/images/${id}/thumb`,

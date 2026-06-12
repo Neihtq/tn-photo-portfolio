@@ -56,10 +56,7 @@ export function AlbumsAdmin() {
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed) {
-      setCreateError("A name is required.");
-      return;
-    }
+    // Title is optional — an album can be untitled (e.g. cover-only).
     if (isPrivate && !password.trim()) {
       setCreateError("A private album needs a password.");
       return;
@@ -68,7 +65,7 @@ export function AlbumsAdmin() {
     setCreateError(null);
     try {
       const { id } = await api.createAlbum({
-        name: trimmed,
+        name: trimmed || undefined,
         subtitle: subtitle.trim() || undefined,
         categoryId: categoryId ? Number(categoryId) : null,
         isPrivate,
@@ -82,7 +79,8 @@ export function AlbumsAdmin() {
   }
 
   async function onDelete(album: AdminAlbum) {
-    if (!window.confirm(`Delete album “${album.name}”? This cannot be undone.`)) return;
+    const label = album.name.trim() || "this untitled album";
+    if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;
     setBusyId(album.id);
     try {
       await api.deleteAlbum(album.id);
@@ -128,14 +126,13 @@ export function AlbumsAdmin() {
 
         <div className="albums-create-grid">
           <label className="admin-field">
-            <span className="admin-label">Name</span>
+            <span className="admin-label">Name (optional)</span>
             <input
               className="admin-input"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Album name"
-              required
+              placeholder="Leave blank for no title"
             />
           </label>
 
@@ -237,7 +234,7 @@ export function AlbumsAdmin() {
                 </td>
                 <td>
                   <Link className="albums-name" to={`/admin/albums/${album.id}`}>
-                    {album.name}
+                    {album.name.trim() || <em>Untitled</em>}
                   </Link>
                   {album.subtitle && <div className="albums-subtitle">{album.subtitle}</div>}
                 </td>

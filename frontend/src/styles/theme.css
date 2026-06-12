@@ -4,12 +4,12 @@
    Paper-white background, generous whitespace, seamless (chromeless) navigation. */
 
 :root {
-  --paper: #f7f5f0; /* paper white, not pure white */
-  --paper-dim: #efece5;
+  --paper: #f2ede2; /* warm sandy paper, not white */
+  --paper-dim: #e8e1d2;
   --ink: #1a1a18;
   --ink-soft: #55524c;
   --ink-faint: #8a857c;
-  --line: #e2ddd3;
+  --line: #ddd5c6;
   --accent: #1a1a18;
 
   --font-display: "Cormorant Garamond", "Times New Roman", serif;

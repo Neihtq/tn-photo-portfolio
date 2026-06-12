@@ -9,6 +9,7 @@ import { useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import type { AlbumMeta, ApiImage, DownloadStatus } from "../api/types";
 import { Gallery } from "../components/Gallery";
+import { AlbumHero } from "../components/AlbumHero";
 import { useInfiniteImages } from "../hooks/useInfiniteImages";
 import "./PrivateAlbum.css";
 
@@ -111,8 +112,10 @@ function PasswordGate({ slug, onUnlocked }: GateProps) {
       setSubmitting(true);
       setError(null);
       try {
-        const res = await api.unlock(slug, password);
-        onUnlocked({ name: res.name, subtitle: res.subtitle, slug });
+        await api.unlock(slug, password);
+        // Re-fetch full metadata (incl. cover) now that the unlock cookie is set.
+        const meta = await api.privateAlbum(slug);
+        onUnlocked(meta);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
           setError("Incorrect password.");
@@ -191,19 +194,24 @@ function UnlockedAlbum({ slug, meta }: UnlockedProps) {
   );
 
   return (
-    <div className="content">
-      <h1 className="page-title">{meta?.name ?? ""}</h1>
-      {meta?.subtitle && <p className="page-subtitle">{meta.subtitle}</p>}
+    <div className="private-album">
+      <AlbumHero
+        name={meta?.name ?? ""}
+        subtitle={meta?.subtitle ?? ""}
+        cover={meta?.cover ?? null}
+      />
 
-      <DownloadAll slug={slug} />
+      <div className="content">
+        <DownloadAll slug={slug} />
 
-      <Gallery images={images} renderDownload={renderDownload} />
-      <div ref={sentinelRef} />
-      {loading && <div className="spinner" />}
-      {error && !loading && <p className="private-load-error">Could not load images.</p>}
-      {done && images.length === 0 && (
-        <p className="page-subtitle">This album has no photos yet.</p>
-      )}
+        <Gallery images={images} renderDownload={renderDownload} />
+        <div ref={sentinelRef} />
+        {loading && <div className="spinner" />}
+        {error && !loading && <p className="private-load-error">Could not load images.</p>}
+        {done && images.length === 0 && (
+          <p className="page-subtitle">This album has no photos yet.</p>
+        )}
+      </div>
     </div>
   );
 }

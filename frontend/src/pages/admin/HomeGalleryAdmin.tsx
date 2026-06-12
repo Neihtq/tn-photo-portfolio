@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 import type { AdminImage } from "../../api/types";
+import { ImagePicker } from "../../components/ImagePicker";
 import "./HomeGalleryAdmin.css";
 
 // Admin → Home gallery: manage the ordered selected-work images shown on the
@@ -11,6 +12,9 @@ export function HomeGalleryAdmin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -33,15 +37,56 @@ export function HomeGalleryAdmin() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setBusy(true);
+    setUploadPct(0);
     setError(null);
     try {
-      await api.uploadImages(files); // no albumId → home gallery
+      await api.uploadImages(files, null, setUploadPct); // no albumId → home gallery
       await load();
     } catch {
       setError("Could not upload images.");
     } finally {
       setBusy(false);
+      setUploadPct(null);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  // Add an already-uploaded image (e.g. from an album) to the home gallery.
+  async function onPickExisting(imageId: number | null) {
+    setPickerOpen(false);
+    if (imageId == null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.addToHome([imageId]);
+      await load();
+    } catch {
+      setError("Could not add image to home gallery.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Drag-to-reorder: drop dragged item before the target index, then persist.
+  async function onDrop(targetIndex: number) {
+    if (dragIndex === null || dragIndex === targetIndex) {
+      setDragIndex(null);
+      return;
+    }
+    const next = images.slice();
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    setDragIndex(null);
+    setImages(next);
+    setBusy(true);
+    setError(null);
+    try {
+      await api.reorderImages(next.map((i) => i.id), null);
+    } catch {
+      setError("Could not reorder images.");
+      await load();
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -131,11 +176,11 @@ export function HomeGalleryAdmin() {
       <section className="admin-card">
         <h2 className="admin-card-title">Add images</h2>
         <p className="admin-hint">
-          Uploaded images go straight to the homepage selected-work gallery.
+          Upload new photos, or pick from images you've already uploaded to albums.
         </p>
         <div className="admin-actions">
           <label className="admin-btn admin-btn-file">
-            {busy ? "Working…" : "Upload images"}
+            {uploadPct !== null ? `Uploading… ${uploadPct}%` : "Upload images"}
             <input
               ref={fileRef}
               type="file"
@@ -146,7 +191,20 @@ export function HomeGalleryAdmin() {
               hidden
             />
           </label>
+          <button
+            type="button"
+            className="admin-btn"
+            onClick={() => setPickerOpen(true)}
+            disabled={busy}
+          >
+            Pick from existing
+          </button>
         </div>
+        {uploadPct !== null && (
+          <div className="upload-progress" role="progressbar" aria-valuenow={uploadPct}>
+            <div className="upload-progress-bar" style={{ width: `${uploadPct}%` }} />
+          </div>
+        )}
       </section>
 
       <section className="admin-card">
@@ -172,9 +230,19 @@ export function HomeGalleryAdmin() {
         {images.length === 0 ? (
           <p className="admin-empty">No images in the home gallery yet.</p>
         ) : (
+          <>
+          <p className="admin-hint">Drag rows to reorder, or use the arrows.</p>
           <ul className="hga-list">
             {images.map((img, index) => (
-              <li className="hga-item" key={img.id}>
+              <li
+                className={"hga-item" + (dragIndex === index ? " hga-item-dragging" : "")}
+                key={img.id}
+                draggable
+                onDragStart={() => setDragIndex(index)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => void onDrop(index)}
+                onDragEnd={() => setDragIndex(null)}
+              >
                 <div className="hga-reorder">
                   <button
                     className="hga-arrow"
@@ -232,8 +300,17 @@ export function HomeGalleryAdmin() {
               </li>
             ))}
           </ul>
+          </>
         )}
       </section>
+
+      {pickerOpen && (
+        <ImagePicker
+          title="Add an existing image to the home gallery"
+          onPick={(id) => void onPickExisting(id)}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }

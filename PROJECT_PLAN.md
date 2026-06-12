@@ -188,6 +188,15 @@ Legend: [ ] todo · [~] in progress · [x] done
   - Category thumbnails chosen via a reusable visual `ImagePicker` modal (album thumbnails already used in-grid clicking).
   - Backend: 11/11 tests pass (added about/portrait/picker coverage). Verified live in containers.
 
+- [x] **Phase 12 — Admin polish + album covers** (user-requested):
+  - **Upload progress**: XHR-based uploads (`api.uploadImages(files, albumId, onProgress)`) with a % bar in Album Editor + Home Gallery.
+  - **Drag-to-reorder**: HTML5 drag-and-drop in the Album Editor image grid and Home Gallery list (arrows kept as fallback).
+  - **Home gallery from existing**: "Pick from existing" via `ImagePicker` → `POST /api/admin/home/add` (home_gallery references images; an image can be in an album AND on home).
+  - **Album cover**: `albums.cover_image_id` (idempotent ALTER migration verified on pre-existing DBs). Full-bleed hero with gradient scrim + light title overlay on Album/PrivateAlbum (`AlbumHero` component); admin cover picker in Album Editor. Public `GET /api/albums/:slug` + private metadata return `cover` (full variant).
+  - **Optional album title**: name may be empty everywhere (slug falls back to `album-N`; admin shows "Untitled").
+  - **Sandier background**: `--paper`/`--paper-dim`/`--line` warmed toward sand.
+  - Backend 14/14 tests pass (added cover, untitled, home-add coverage). Verified live in Finch containers incl. the cover-column migration on an existing DB.
+
 **Git branch:** `main` (not master).
 
 **Milestone pings (ntfy):** after Phase 4 (backend complete), after Phase 8 (frontend complete), after Phase 9 (deployable), and on any blocker needing manual input (e.g. real TrueNAS paths, NPM config, signature PNG asset).

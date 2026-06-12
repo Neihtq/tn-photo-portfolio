@@ -10,6 +10,7 @@ interface PrivAlbum {
   id: number;
   name: string;
   subtitle: string;
+  cover_image_id: number | null;
   password_hash: string | null;
 }
 
@@ -35,7 +36,12 @@ export async function privateRoutes(app: FastifyInstance): Promise<void> {
     const album = getPrivateAlbum(req.params.slug);
     if (!album) return reply.code(404).send({ error: "album_not_found" });
     if (!hasAlbumAccess(req, album.id)) return reply.code(401).send({ error: "locked" });
-    return { name: album.name, subtitle: album.subtitle, slug: req.params.slug };
+    return {
+      name: album.name,
+      subtitle: album.subtitle,
+      slug: req.params.slug,
+      cover: album.cover_image_id ? `/api/images/${album.cover_image_id}/full` : null,
+    };
   });
 
   // Paginated images — requires an unlock token.
@@ -97,6 +103,8 @@ export async function privateRoutes(app: FastifyInstance): Promise<void> {
 
 function getPrivateAlbum(slug: string): PrivAlbum | undefined {
   return db
-    .prepare("SELECT id, name, subtitle, password_hash FROM albums WHERE slug = ? AND is_private = 1")
+    .prepare(
+      "SELECT id, name, subtitle, cover_image_id, password_hash FROM albums WHERE slug = ? AND is_private = 1",
+    )
     .get(slug) as PrivAlbum | undefined;
 }

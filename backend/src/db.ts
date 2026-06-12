@@ -55,6 +55,7 @@ export function migrate(): void {
       subtitle           TEXT NOT NULL DEFAULT '',
       slug               TEXT NOT NULL UNIQUE,
       thumbnail_image_id INTEGER REFERENCES images(id) ON DELETE SET NULL,
+      cover_image_id     INTEGER REFERENCES images(id) ON DELETE SET NULL,
       is_private         INTEGER NOT NULL DEFAULT 0,
       password_hash      TEXT,
       sort_order         INTEGER NOT NULL DEFAULT 0,
@@ -79,4 +80,16 @@ export function migrate(): void {
       expires_at INTEGER
     );
   `);
+
+  // Lightweight column migrations for databases created before a column existed.
+  // (CREATE TABLE IF NOT EXISTS won't add columns to an existing table.)
+  addColumnIfMissing("albums", "cover_image_id", "INTEGER REFERENCES images(id) ON DELETE SET NULL");
+}
+
+/** Add a column to a table only if it isn't already present. Idempotent. */
+function addColumnIfMissing(table: string, column: string, definition: string): void {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
 }

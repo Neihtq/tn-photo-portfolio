@@ -312,3 +312,21 @@
     margin-top: 0;
   }
 }
+
+/* Upload progress bar (shared across admin upload screens). */
+.upload-progress {
+  height: 6px;
+  background: var(--paper-dim);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 10px 0 0;
+}
+.upload-progress-bar {
+  height: 100%;
+  background: var(--ink);
+  transition: width 0.2s var(--ease);
+}
+
+/* Drag-to-reorder feedback for the home gallery rows. */
+.hga-item { cursor: grab; }
+.hga-item-dragging { opacity: 0.4; }

@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import type { AlbumMeta } from "../api/types";
 import { Gallery } from "../components/Gallery";
+import { AlbumHero } from "../components/AlbumHero";
 import { useInfiniteImages } from "../hooks/useInfiniteImages";
 import "./Album.css";
 
@@ -45,19 +46,14 @@ export function Album() {
   }
 
   return (
-    <div className="content album-page">
-      {meta && (
-        <header className="album-header">
-          <h1 className="page-title">{meta.name}</h1>
-          {meta.subtitle.trim() !== "" && (
-            <p className="page-subtitle">{meta.subtitle}</p>
-          )}
-        </header>
-      )}
+    <div className="album-page">
+      {meta && <AlbumHero name={meta.name} subtitle={meta.subtitle} cover={meta.cover} />}
 
-      <Gallery images={images} />
-      <div ref={sentinelRef} />
-      {loading && <div className="spinner" />}
+      <div className="content">
+        <Gallery images={images} />
+        <div ref={sentinelRef} />
+        {loading && <div className="spinner" />}
+      </div>
     </div>
   );
 }

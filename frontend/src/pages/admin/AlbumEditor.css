@@ -198,3 +198,39 @@
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 }
+
+/* Cover image row */
+.ae-cover-row {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ae-cover-preview {
+  width: 240px;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--paper-dim);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.ae-cover-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Drag-to-reorder affordances */
+.ae-drag-hint {
+  margin-top: 0;
+}
+.ae-tile {
+  cursor: grab;
+}
+.ae-tile-dragging {
+  opacity: 0.4;
+}
+/* .upload-progress is defined globally in AdminApp.css. */

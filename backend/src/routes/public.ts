@@ -119,9 +119,16 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
   app.get<{ Params: { slug: string } }>("/api/albums/:slug", async (req, reply) => {
     const album = db
       .prepare("SELECT * FROM albums WHERE slug = ? AND is_private = 0")
-      .get(req.params.slug) as { id: number; name: string; subtitle: string } | undefined;
+      .get(req.params.slug) as
+      | { id: number; name: string; subtitle: string; cover_image_id: number | null }
+      | undefined;
     if (!album) return reply.code(404).send({ error: "album_not_found" });
-    return { name: album.name, subtitle: album.subtitle, slug: req.params.slug };
+    return {
+      name: album.name,
+      subtitle: album.subtitle,
+      slug: req.params.slug,
+      cover: album.cover_image_id ? `/api/images/${album.cover_image_id}/full` : null,
+    };
   });
 
   // Paginated images for a public album.

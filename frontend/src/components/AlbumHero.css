@@ -1,0 +1,56 @@
+/* Full-bleed hero: spans the viewport width regardless of parent padding. */
+.album-hero {
+  position: relative;
+  width: 100vw;
+  margin-left: 50%;
+  transform: translateX(-50%);
+  min-height: clamp(280px, 52vh, 560px);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-bottom: clamp(24px, 4vw, 48px);
+}
+
+/* Gradient scrim keeps the title legible over any photo. */
+.album-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(20, 19, 17, 0.15),
+    rgba(20, 19, 17, 0.35) 55%,
+    rgba(20, 19, 17, 0.55)
+  );
+}
+
+.album-hero-text {
+  position: relative;
+  z-index: 1;
+  padding: 0 24px;
+  color: #f7f3ea;
+  animation: fadeIn 0.6s var(--ease);
+}
+
+.album-hero-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(34px, 6vw, 64px);
+  letter-spacing: 0.02em;
+  margin: 0;
+  color: #fff;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.35);
+}
+
+.album-hero-subtitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(16px, 2.4vw, 22px);
+  letter-spacing: 0.04em;
+  margin: 10px 0 0;
+  color: rgba(247, 243, 234, 0.92);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+}

@@ -406,3 +406,99 @@ test("admin images/all powers the thumbnail picker and category thumbnail set", 
   const people = res.json().find((c: any) => c.slug === "people");
   assert.ok(people && people.thumbnail === `/api/images/${imgId}/thumb`);
 });
+
+test("album cover image: set via update, exposed on public album metadata", async () => {
+  // Create a public album + image.
+  let res = await app.inject({
+    method: "POST",
+    url: "/api/admin/albums",
+    headers: { cookie: adminCookie },
+    payload: { name: "Cover Test" },
+  });
+  const albumId = res.json().id;
+  const slug = res.json().slug;
+  const mp = multipart({}, [{ name: "file", filename: "c.jpg", data: await jpeg(1920, 1080) }]);
+  res = await app.inject({
+    method: "POST",
+    url: `/api/admin/images?albumId=${albumId}`,
+    headers: { cookie: adminCookie, ...mp.headers },
+    payload: mp.body,
+  });
+  const imgId = res.json().created[0];
+
+  // Set the cover.
+  res = await app.inject({
+    method: "PUT",
+    url: `/api/admin/albums/${albumId}`,
+    headers: { cookie: adminCookie },
+    payload: { coverImageId: imgId },
+  });
+  assert.equal(res.statusCode, 200);
+
+  // Public album metadata exposes the cover (full variant url).
+  res = await app.inject({ method: "GET", url: `/api/albums/${slug}` });
+  assert.equal(res.json().cover, `/api/images/${imgId}/full`);
+
+  // Clearing the cover sets it back to null.
+  res = await app.inject({
+    method: "PUT",
+    url: `/api/admin/albums/${albumId}`,
+    headers: { cookie: adminCookie },
+    payload: { coverImageId: null },
+  });
+  res = await app.inject({ method: "GET", url: `/api/albums/${slug}` });
+  assert.equal(res.json().cover, null);
+});
+
+test("album with no title is allowed and gets a stable slug", async () => {
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/admin/albums",
+    headers: { cookie: adminCookie },
+    payload: { name: "" },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.ok(typeof res.json().slug === "string" && res.json().slug.length > 0);
+});
+
+test("home gallery: add existing album image by id", async () => {
+  // Create an album image not yet on home.
+  let res = await app.inject({
+    method: "POST",
+    url: "/api/admin/albums",
+    headers: { cookie: adminCookie },
+    payload: { name: "Home Source" },
+  });
+  const albumId = res.json().id;
+  const mp = multipart({}, [{ name: "file", filename: "h.jpg", data: await jpeg(500, 500) }]);
+  res = await app.inject({
+    method: "POST",
+    url: `/api/admin/images?albumId=${albumId}`,
+    headers: { cookie: adminCookie, ...mp.headers },
+    payload: mp.body,
+  });
+  const imgId = res.json().created[0];
+
+  // Add it to the home gallery by id.
+  res = await app.inject({
+    method: "POST",
+    url: "/api/admin/home/add",
+    headers: { cookie: adminCookie },
+    payload: { imageIds: [imgId] },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json().added, [imgId]);
+
+  // It now appears in the admin home list...
+  res = await app.inject({ method: "GET", url: "/api/admin/home", headers: { cookie: adminCookie } });
+  assert.ok((res.json() as any[]).some((i) => i.id === imgId));
+
+  // ...and adding the same id again is a no-op (no duplicate).
+  res = await app.inject({
+    method: "POST",
+    url: "/api/admin/home/add",
+    headers: { cookie: adminCookie },
+    payload: { imageIds: [imgId] },
+  });
+  assert.deepEqual(res.json().added, []);
+});
