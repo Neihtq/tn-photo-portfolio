@@ -1,10 +1,15 @@
 import Database from "better-sqlite3";
-import { config } from "./config.js";
+import { config, ensureDirs } from "./config.js";
 
 /**
  * SQLite database (better-sqlite3, synchronous). The DB file lives on the
  * persistent data volume so it survives container rebuilds.
+ *
+ * Ensure the storage directories exist before opening the DB — this module is
+ * imported (and the Database constructed) before the server's own ensureDirs()
+ * call runs, and better-sqlite3 throws if the parent directory is missing.
  */
+ensureDirs();
 export const db = new Database(config.dbPath);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
