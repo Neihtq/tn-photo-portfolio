@@ -46,3 +46,14 @@ export function setSetting(key: string, value: string): void {
     "INSERT INTO settings(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
   ).run(key, value);
 }
+
+/** Page-navigation fade presets. The frontend maps these to duration/offset. */
+export const TRANSITION_PRESETS = ["off", "subtle", "gentle", "standard"] as const;
+export type TransitionPreset = (typeof TRANSITION_PRESETS)[number];
+
+/** Coerce any stored/incoming value to a valid preset; default "subtle". */
+export function normalizeTransition(value: string | null | undefined): TransitionPreset {
+  return (TRANSITION_PRESETS as readonly string[]).includes(value ?? "")
+    ? (value as TransitionPreset)
+    : "subtle";
+}

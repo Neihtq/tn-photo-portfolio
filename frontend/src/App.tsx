@@ -20,14 +20,15 @@ export function App() {
   const loc = useLocation();
   const isAdmin = loc.pathname.startsWith("/admin");
 
-  // Reflect the configured site name in the tab title and the signature as the
-  // favicon. Runs once on load; falls back gracefully when unset.
+  // Reflect the configured site name in the tab title, the signature as the
+  // favicon, and the chosen page-transition preset. Runs once on load.
   useEffect(() => {
     api
       .home()
       .then((h) => {
         document.title = h.name?.trim() || "Photography";
         if (h.signature) setFavicon(h.signature);
+        applyTransition(h.transition);
       })
       .catch(() => {});
   }, []);
@@ -55,6 +56,24 @@ export function App() {
       </div>
     </>
   );
+}
+
+/**
+ * Page-transition presets → CSS variables consumed by `.route-fade`. Kept small
+ * by default ("subtle"); "off" disables the animation entirely.
+ */
+const TRANSITIONS: Record<string, { duration: string; offset: string }> = {
+  off: { duration: "0s", offset: "0px" },
+  subtle: { duration: "0.18s", offset: "3px" },
+  gentle: { duration: "0.28s", offset: "6px" },
+  standard: { duration: "0.4s", offset: "12px" },
+};
+
+function applyTransition(preset: string): void {
+  const t = TRANSITIONS[preset] ?? TRANSITIONS.subtle;
+  const root = document.documentElement;
+  root.style.setProperty("--route-fade-duration", t.duration);
+  root.style.setProperty("--route-fade-offset", t.offset);
 }
 
 /** Point the document favicon at the given URL (creating the link if needed). */

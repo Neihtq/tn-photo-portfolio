@@ -312,6 +312,43 @@ test("expired zip is swept and returns gone", async () => {
   assert.equal(res.json().status, "ready");
 });
 
+test("transition preset: defaults to subtle, saves, validates, exposed publicly", async () => {
+  // Default before configured.
+  let res = await app.inject({
+    method: "GET",
+    url: "/api/admin/settings",
+    headers: { cookie: adminCookie },
+  });
+  assert.equal(res.json().transition, "subtle");
+  res = await app.inject({ method: "GET", url: "/api/home" });
+  assert.equal(res.json().transition, "subtle");
+
+  // Save a valid preset.
+  res = await app.inject({
+    method: "PUT",
+    url: "/api/admin/settings",
+    headers: { cookie: adminCookie },
+    payload: { transition: "gentle" },
+  });
+  assert.equal(res.statusCode, 200);
+  res = await app.inject({ method: "GET", url: "/api/home" });
+  assert.equal(res.json().transition, "gentle");
+
+  // An invalid value is coerced back to the default.
+  res = await app.inject({
+    method: "PUT",
+    url: "/api/admin/settings",
+    headers: { cookie: adminCookie },
+    payload: { transition: "bogus" },
+  });
+  res = await app.inject({
+    method: "GET",
+    url: "/api/admin/settings",
+    headers: { cookie: adminCookie },
+  });
+  assert.equal(res.json().transition, "subtle");
+});
+
 test("about/connect content: defaults, save, and public read", async () => {
   // Public defaults before anything is configured.
   let res = await app.inject({ method: "GET", url: "/api/about" });

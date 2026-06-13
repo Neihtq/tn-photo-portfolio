@@ -13,7 +13,7 @@ import {
   hashPassword,
 } from "../auth.js";
 import { processImage, safeExt, originalPath, deleteImageFiles, coverPath } from "../images.js";
-import { slugify, uniqueSlug, getSetting, setSetting, now } from "../util.js";
+import { slugify, uniqueSlug, getSetting, setSetting, now, normalizeTransition } from "../util.js";
 
 interface ImageRow {
   id: number;
@@ -67,9 +67,17 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     instagramHandle: getSetting("instagram_handle") ?? "",
     instagramUrl: getSetting("instagram_url") ?? "",
     hasSignature: !!getSetting("signature_path"),
+    transition: normalizeTransition(getSetting("transition")),
   }));
 
-  app.put<{ Body: { siteName?: string; instagramHandle?: string; instagramUrl?: string } }>(
+  app.put<{
+    Body: {
+      siteName?: string;
+      instagramHandle?: string;
+      instagramUrl?: string;
+      transition?: string;
+    };
+  }>(
     "/api/admin/settings",
     guard,
     async (req) => {
@@ -77,6 +85,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       if (b.siteName !== undefined) setSetting("site_name", b.siteName);
       if (b.instagramHandle !== undefined) setSetting("instagram_handle", b.instagramHandle);
       if (b.instagramUrl !== undefined) setSetting("instagram_url", b.instagramUrl);
+      if (b.transition !== undefined) setSetting("transition", normalizeTransition(b.transition));
       return { ok: true };
     },
   );

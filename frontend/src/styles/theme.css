@@ -107,14 +107,16 @@ button {
   }
 }
 
-/* Short fade-in on each route navigation (the wrapper is keyed by path). */
+/* Short fade-in on each route navigation (the wrapper is keyed by path).
+   Duration/offset come from the admin-chosen preset (set on :root by App.tsx);
+   the values here are the "subtle" fallback if settings haven't loaded. */
 .route-fade {
-  animation: routeFade 0.32s var(--ease);
+  animation: routeFade var(--route-fade-duration, 0.18s) var(--ease);
 }
 @keyframes routeFade {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(var(--route-fade-offset, 3px));
   }
   to {
     opacity: 1;

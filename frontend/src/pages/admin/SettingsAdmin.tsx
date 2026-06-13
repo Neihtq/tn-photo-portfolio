@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
-import type { AdminSettings } from "../../api/types";
+import type { AdminSettings, TransitionPreset } from "../../api/types";
 import "./SettingsAdmin.css";
 
 // Admin → Settings: manage homepage signature, instagram fields, and site name.
@@ -11,6 +11,7 @@ export function SettingsAdmin() {
   const [siteName, setSiteName] = useState("");
   const [instagramHandle, setInstagramHandle] = useState("");
   const [instagramUrl, setInstagramUrl] = useState("");
+  const [transition, setTransition] = useState<TransitionPreset>("subtle");
   const [hasSignature, setHasSignature] = useState(false);
 
   const [saving, setSaving] = useState(false);
@@ -30,6 +31,7 @@ export function SettingsAdmin() {
       setSiteName(s.siteName);
       setInstagramHandle(s.instagramHandle);
       setInstagramUrl(s.instagramUrl);
+      setTransition(s.transition);
       setHasSignature(s.hasSignature);
     } catch {
       setError("Could not load settings.");
@@ -48,7 +50,7 @@ export function SettingsAdmin() {
     setSaved(false);
     setError(null);
     try {
-      await api.saveSettings({ siteName, instagramHandle, instagramUrl });
+      await api.saveSettings({ siteName, instagramHandle, instagramUrl, transition });
       setSaved(true);
     } catch {
       setError("Could not save settings.");
@@ -139,6 +141,26 @@ export function SettingsAdmin() {
             }}
             placeholder="https://instagram.com/yourhandle"
           />
+        </label>
+
+        <label className="admin-field">
+          <span className="admin-label">Page transition</span>
+          <select
+            className="admin-input admin-select"
+            value={transition}
+            onChange={(e) => {
+              setTransition(e.target.value as TransitionPreset);
+              setSaved(false);
+            }}
+          >
+            <option value="off">Off (no animation)</option>
+            <option value="subtle">Subtle (default)</option>
+            <option value="gentle">Gentle</option>
+            <option value="standard">Standard</option>
+          </select>
+          <span className="admin-hint">
+            How pages fade when visitors navigate. Takes effect on their next page load.
+          </span>
         </label>
 
         <div className="admin-actions">

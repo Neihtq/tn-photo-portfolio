@@ -15,10 +15,13 @@ export interface ImagePage {
   nextCursor: number | null; // null = no more pages
 }
 
+export type TransitionPreset = "off" | "subtle" | "gentle" | "standard";
+
 export interface HomeInfo {
   signature: string | null; // url or null
   instagram: { handle: string; url: string };
   name: string;
+  transition: TransitionPreset;
 }
 
 export interface Category {
@@ -91,6 +94,7 @@ export interface AdminSettings {
   instagramHandle: string;
   instagramUrl: string;
   hasSignature: boolean;
+  transition: TransitionPreset;
 }
 
 // About / Connect page content (configured via admin).

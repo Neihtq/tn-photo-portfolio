@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import fs from "node:fs";
 import { db } from "../db.js";
 import { fullPath, thumbPath, originalPath, coverPath } from "../images.js";
-import { getSetting } from "../util.js";
+import { getSetting, normalizeTransition } from "../util.js";
 import { hasAlbumAccess } from "../auth.js";
 
 interface ImageRow {
@@ -38,6 +38,7 @@ export async function publicRoutes(app: FastifyInstance): Promise<void> {
         url: getSetting("instagram_url") ?? "",
       },
       name: getSetting("site_name") ?? "",
+      transition: normalizeTransition(getSetting("transition")),
     };
   });
 
