@@ -15,7 +15,7 @@ Notifications: `curl -d "msg" ntfy.sh/thien-photoport` at milestones / when manu
 |---|---|
 | Frontend | React SPA (Vite + TypeScript), separate from API |
 | Backend | Node + Fastify + sharp + better-sqlite3 + archiver |
-| Storage | Filesystem (image variants) + SQLite DB file, both on one persistent volume |
+| Storage | Filesystem (image variants) + SQLite DB file. Two volumes: `/data` (DB + variants + covers + signature + zips) on SSD, `/originals` (full-res uploads) on HDD. Single-volume works too (`ORIGINALS_PATH=<DATA_PATH>/originals`). |
 | Image variants | `thumb` (masonry preview) + `full` compressed ~2560px long edge q82 (lightbox). True **originals** always kept on disk for downloads |
 | Private "Download All" UX | Click → worker builds zip → frontend polls status → swaps to "Download ZIP" button. Zip + link valid **10 min** then destroyed |
 | Single-image download | Serves the true original full-res file |
@@ -52,12 +52,13 @@ Notifications: `curl -d "msg" ntfy.sh/thien-photoport` at milestones / when manu
    │                       - archiver (zip worker)│
    │                          │                   │
    │                          ▼                   │
-   │              persistent volume  ./data       │
-   │                ├── portfolio.db (SQLite)     │
-   │                ├── originals/<imageId>.<ext> │
-   │                ├── full/<imageId>.webp       │
-   │                ├── thumb/<imageId>.webp      │
-   │                └── tmp-zips/<token>.zip      │
+   │   /data volume (SSD)        /originals (HDD)  │
+   │    ├── portfolio.db          └── <id>.<ext>   │
+   │    ├── full/<id>.webp         (full-res)      │
+   │    ├── thumb/<id>.webp                        │
+   │    ├── covers/<albumId>.webp                  │
+   │    ├── signature/                             │
+   │    └── tmp-zips/<token>.zip                   │
    └─────────────────────────────────────────────┘
 ```
 
@@ -215,6 +216,9 @@ Legend: [ ] todo · [~] in progress · [x] done
   - **Favicon = signature**: when a signature is set, the favicon points at `/api/signature` (index.html ships a default `<link rel=icon>`; updated at runtime). Caveat: a very wide/thin signature looks small in the tab — a dedicated square favicon variant could be generated if wanted.
   - Backend 16/16 tests pass (added transition default/save/public/invalid-coercion). Verified live in Finch containers.
 
+- [x] **Phase 14 — SSD/HDD storage split** (user-requested):
+  - Originals dir is independently configurable via `ORIGINALS_DIR` (default `<DATA_DIR>/originals`, so single-volume is unchanged). Compose mounts `/data` (`DATA_PATH`, SSD: DB + variants + covers + signature + zips) and `/originals` (`ORIGINALS_PATH`, HDD: full-res uploads). Test harness points the two at separate temp dirs and asserts originals land in `ORIGINALS_DIR` and NOT under `DATA_DIR`. 16/16 pass.
+
 **Git branch:** `main` (not master).
 
 **Milestone pings (ntfy):** after Phase 4 (backend complete), after Phase 8 (frontend complete), after Phase 9 (deployable), and on any blocker needing manual input (e.g. real TrueNAS paths, NPM config, signature PNG asset).
@@ -225,6 +229,6 @@ Legend: [ ] todo · [~] in progress · [x] done
 
 - Admin username/password: bootstrapped via `.env` (ADMIN_USER / ADMIN_PASSWORD_HASH) — user sets real values at deploy.
 - JWT/session secret: from `.env`.
-- TrueNAS host path for the persistent volume bind-mount (README will use `./data`; user maps to a dataset).
+- TrueNAS host paths for the two bind-mounts: `DATA_PATH` (SSD dataset) and `ORIGINALS_PATH` (HDD dataset). Single-disk = point `ORIGINALS_PATH` at `<DATA_PATH>/originals`.
 - Actual signature PNG + seed photos: user uploads via Admin after deploy.
 - About/Connect content + portrait: now fully editable from the admin "About & Connect" page (no code change needed). User fills these in after deploy.

@@ -1,8 +1,14 @@
 # Photo portfolio stack. Two services behind one nginx (the `web` service).
 # Works with Docker (TrueNAS) and Finch (dev MacBook): `finch compose up -d`.
 #
-# Persistence: the ./data bind-mount holds the SQLite DB and all image files.
-# On TrueNAS, point this at a dataset path (see README). Data survives rebuilds.
+# Persistence (two volumes for an SSD/HDD split):
+#   /data      → DB + served variants (full/thumb) + covers + signature + tmp-zips.
+#                Latency-sensitive + frequently read → put on SSD (DATA_PATH).
+#   /originals → full-resolution uploaded originals (write-once, large, read only
+#                on download). Bulk storage → put on HDD (ORIGINALS_PATH).
+# For a single-volume setup, just point ORIGINALS_PATH at <DATA_PATH>/originals
+# (or leave it default). On TrueNAS, map these at dataset paths (see README).
+# Data survives rebuilds.
 
 services:
   api:
@@ -12,6 +18,7 @@ services:
     environment:
       - NODE_ENV=production
       - DATA_DIR=/data
+      - ORIGINALS_DIR=/originals
       - PORT=4000
       - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in .env}
       - ADMIN_USER=${ADMIN_USER:-admin}
@@ -21,7 +28,8 @@ services:
       - FULL_MAX_EDGE=${FULL_MAX_EDGE:-2560}
       - FULL_QUALITY=${FULL_QUALITY:-82}
     volumes:
-      - ${DATA_PATH:-./data}:/data
+      - ${DATA_PATH:-./data}:/data                       # SSD: DB + variants
+      - ${ORIGINALS_PATH:-./data/originals}:/originals    # HDD: full-res originals
     expose:
       - "4000"
 

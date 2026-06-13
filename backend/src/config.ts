@@ -17,6 +17,13 @@ const DATA_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : path.resolve(process.cwd(), "data");
 
+// Originals (full-res uploads) can live on a separate volume from the rest —
+// e.g. bulk originals on an HDD while the DB + served variants stay on an SSD.
+// Defaults to <DATA_DIR>/originals so single-volume setups are unchanged.
+const ORIGINALS_DIR = process.env.ORIGINALS_DIR
+  ? path.resolve(process.env.ORIGINALS_DIR)
+  : path.join(DATA_DIR, "originals");
+
 export const config = {
   host: process.env.HOST ?? "0.0.0.0",
   port: envInt("PORT", 4000),
@@ -24,7 +31,7 @@ export const config = {
   // Persistent storage
   dataDir: DATA_DIR,
   dbPath: path.join(DATA_DIR, "portfolio.db"),
-  originalsDir: path.join(DATA_DIR, "originals"),
+  originalsDir: ORIGINALS_DIR,
   fullDir: path.join(DATA_DIR, "full"),
   thumbDir: path.join(DATA_DIR, "thumb"),
   signatureDir: path.join(DATA_DIR, "signature"),

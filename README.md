@@ -68,8 +68,11 @@ Edit `.env`:
   ```bash
   printf '%s' "$THE_HASH" | sed 's/\$/$$/g'
   ```
-- `DATA_PATH` — host path for persistent data. On TrueNAS, use a dataset path,
-  e.g. `/mnt/tank/apps/photo-portfolio/data`. **This is what survives rebuilds.**
+- `DATA_PATH` — host path for the DB + served variants (mounted at `/data`). Put
+  on **SSD**. On TrueNAS, use a dataset path, e.g. `/mnt/ssd-pool/apps/photo-portfolio/data`.
+- `ORIGINALS_PATH` — host path for full-res originals (mounted at `/originals`). Put
+  on **HDD**, e.g. `/mnt/hdd-pool/apps/photo-portfolio/originals`. For a single disk,
+  set it to `<DATA_PATH>/originals` (the default). **Both paths survive rebuilds.**
 - `WEB_PORT` — host port nginx listens on (default `8080`).
 
 ### 2. Build & run
@@ -83,7 +86,7 @@ finch compose up -d --build
 ```
 
 This starts:
-- `api` — the backend, with `DATA_PATH` mounted at `/data`.
+- `api` — the backend, with `DATA_PATH` mounted at `/data` and `ORIGINALS_PATH` at `/originals`.
 - `web` — nginx serving the SPA and proxying `/api` → `api:4000`, published on `WEB_PORT`.
 
 > If you ever recreate **only** the `api` container while `web` keeps running
@@ -136,12 +139,12 @@ That's the only public URL — no subdomains required.
 
 ## Data & persistence
 
-Everything mutable lives under `DATA_PATH` (mounted at `/data`):
+State is split across **two mounts** so you can put each on the right disk:
 
+**`DATA_PATH` → `/data`** (latency-sensitive + frequently read → **SSD**):
 ```
 data/
 ├── portfolio.db        SQLite (settings, categories, albums, images, jobs)
-├── originals/<id>.<ext>  untouched uploads (used for full-res downloads & ZIPs)
 ├── full/<id>.webp        compressed ~2560px variant (lightbox)
 ├── thumb/<id>.webp       small variant (masonry previews)
 ├── covers/<albumId>.webp dedicated album cover heroes (~2880px, high quality)
@@ -149,8 +152,22 @@ data/
 └── tmp-zips/             transient download ZIPs (auto-deleted after 10 min)
 ```
 
-**Back up** by snapshotting/copying this directory. Restoring it onto a fresh
-deployment fully restores the site. The container images hold no state.
+**`ORIGINALS_PATH` → `/originals`** (write-once, large, read only on download → **HDD**):
+```
+originals/
+└── <id>.<ext>          untouched full-res uploads (used for downloads & ZIPs)
+```
+
+Why split: the DB + served variants are small and hot (SSD pays off, especially
+during admin uploads and first page loads); originals are the bulk of the storage
+and only read when someone downloads, so an HDD is ideal. For a **single-volume**
+setup, just point `ORIGINALS_PATH` at `<DATA_PATH>/originals` (the default) and
+mount one disk.
+
+**Back up** both paths (snapshot/copy). Restoring them onto a fresh deployment
+fully restores the site. The container images hold no state. Note: the DB in
+`/data` references originals by id, so keep the two volumes together — a `/data`
+backup without its matching `/originals` can't serve downloads/ZIPs.
 
 ---
 

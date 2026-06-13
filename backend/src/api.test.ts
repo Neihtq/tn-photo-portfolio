@@ -5,10 +5,13 @@ import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 
-// Point storage at an ephemeral temp dir BEFORE importing app modules,
-// since config.ts reads DATA_DIR at import time.
+// Point storage at ephemeral temp dirs BEFORE importing app modules, since
+// config.ts reads DATA_DIR/ORIGINALS_DIR at import time. Originals are pointed
+// at a SEPARATE dir to exercise the SSD/HDD split.
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "pp-test-"));
+const ORIG = fs.mkdtempSync(path.join(os.tmpdir(), "pp-orig-"));
 process.env.DATA_DIR = TMP;
+process.env.ORIGINALS_DIR = ORIG;
 process.env.JWT_SECRET = "test-secret";
 process.env.ADMIN_USER = "admin";
 process.env.NODE_ENV = "test";
@@ -58,6 +61,7 @@ before(async () => {
 after(async () => {
   await app.close();
   fs.rmSync(TMP, { recursive: true, force: true });
+  fs.rmSync(ORIG, { recursive: true, force: true });
 });
 
 test("health check", async () => {
@@ -127,10 +131,12 @@ test("create category, album, and upload image generates variants", async () => 
   const imageId = res.json().created[0];
   assert.ok(imageId > 0);
 
-  // variants exist on disk
+  // variants live under DATA_DIR; the original lives under the SEPARATE
+  // ORIGINALS_DIR (SSD/HDD split), NOT under DATA_DIR/originals.
   assert.ok(fs.existsSync(path.join(TMP, "thumb", `${imageId}.webp`)), "thumb variant");
   assert.ok(fs.existsSync(path.join(TMP, "full", `${imageId}.webp`)), "full variant");
-  assert.ok(fs.existsSync(path.join(TMP, "originals", `${imageId}.jpg`)), "original kept");
+  assert.ok(fs.existsSync(path.join(ORIG, `${imageId}.jpg`)), "original kept in ORIGINALS_DIR");
+  assert.ok(!fs.existsSync(path.join(TMP, "originals", `${imageId}.jpg`)), "original NOT in DATA_DIR");
 
   // caption update
   res = await app.inject({
