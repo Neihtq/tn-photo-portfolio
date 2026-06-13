@@ -106,3 +106,25 @@ button {
     transform: rotate(360deg);
   }
 }
+
+/* Short fade-in on each route navigation (the wrapper is keyed by path). */
+.route-fade {
+  animation: routeFade 0.32s var(--ease);
+}
+@keyframes routeFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Respect users who prefer reduced motion: keep it instant. */
+@media (prefers-reduced-motion: reduce) {
+  .route-fade {
+    animation: none;
+  }
+}
