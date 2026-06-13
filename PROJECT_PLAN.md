@@ -103,42 +103,45 @@ photo-portfolio/
 
 ## 4. Data model (SQLite)
 
-- **settings** (singleton key/value): signature_png path, instagram_handle, instagram_url, admin creds bootstrap.
-- **categories**: id, name, slug, thumbnail_image_id, sort_order.
-- **albums**: id, category_id (nullable), name, subtitle, slug, thumbnail_image_id, is_private (bool), password_hash (nullable), sort_order, created_at.
-- **images**: id, album_id (nullable — home gallery images have a special bucket), filename_original, ext, caption, width, height, sort_order, created_at. Variants derived on disk by id.
-- **home_gallery**: ordered list of image ids shown on the landing page (could be album_id = NULL + a flag, or a join table). Decide: a dedicated `home_gallery(image_id, sort_order)` join table referencing images.
-- **download_jobs**: token, album_id, status (pending|ready|expired), zip_path, created_at, expires_at.
+- **settings** (singleton key/value): `signature_path`, `instagram_handle`, `instagram_url`, `site_name`, `transition` (fade preset), `about_title`, `about_text`, `connect_title`, `connect_text`, `connect_email`, `about_portrait_path`. (Admin creds come from env, not the DB.)
+- **categories**: id, name, slug, thumbnail_image_id, sort_order, created_at.
+- **albums**: id, category_id (nullable), name (may be empty = untitled), subtitle, slug (unique, falls back to `album-N`), thumbnail_image_id, `has_cover` (0/1 — dedicated cover upload at `covers/<id>.webp`), is_private (bool), password_hash (nullable), sort_order, created_at. (Legacy unused `cover_image_id` column may exist on older DBs.)
+- **images**: id, album_id (nullable — home gallery images can have album_id), original_name, ext, caption, width, height, bytes, sort_order, created_at. Variants (full/thumb) derived on disk by id; originals kept for downloads.
+- **home_gallery**: `home_gallery(image_id, sort_order)` join table referencing images — an image can be in an album AND featured on home.
+- **download_jobs**: token, album_id, status (pending|ready|error|expired), zip_path, error, created_at, expires_at.
 
-(Adjust as implemented; keep this section in sync.)
+Schema is created idempotently on boot; new columns added via `addColumnIfMissing` (e.g. `has_cover`). Keep this section in sync as it evolves.
 
 ---
 
 ## 5. API surface (draft)
 
 Public (no auth):
-- `GET /api/home` → signature, instagram, site name
+- `GET /api/home` → signature url, instagram, site name, transition preset
 - `GET /api/about` → About/Connect content (titles, text, email, portrait url, instagram)
 - `GET /api/about-portrait` → the portrait image (webp)
 - `GET /api/categories`
 - `GET /api/categories/:slug/albums`
-- `GET /api/albums/:slug` → name, subtitle, paginated images
+- `GET /api/albums/:slug` → name, subtitle, cover url (or null), paginated images via `/images`
+- `GET /api/albums/:slug/cover` → album cover image (webp, served inline)
 - `GET /api/images/:id/thumb` · `/full` · `/original` (original may be guarded for private)
 
 Private albums:
 - `POST /api/private/:slug/unlock` { password } → short-lived token (cookie/JWT) scoping that album
-- `GET /api/private/:slug` (token required) → like album
+- `GET /api/private/:slug` (token required) → like album (incl. cover url)
+- `GET /api/private/:slug/cover` (token required) → album cover (webp, inline)
 - `POST /api/private/:slug/download-all` → { jobToken }
 - `GET /api/download/:jobToken/status` → { status }
 - `GET /api/download/:jobToken/file` → streams zip (while valid)
 - `GET /api/private/:slug/images/:id/original` (token required)
 
 Admin (auth required):
-- `POST /api/admin/login`
-- Settings: signature upload/replace, instagram fields
-- Home gallery: add/remove/reorder/upload images
+- `POST /api/admin/login`, `POST /api/admin/logout`, `GET /api/admin/me`
+- Settings: `GET/PUT /api/admin/settings` (site name, instagram, transition preset); `POST/DELETE /api/admin/signature`
+- Home gallery: upload (`POST /api/admin/images` no albumId), add existing (`POST /api/admin/home/add`), remove/reorder/sort
 - Categories: CRUD + thumbnail (thumbnail chosen via visual picker → `GET /api/admin/images/all`)
 - Albums: CRUD, assign category, title/subtitle, thumbnail, private flag + password, image upload/delete/caption/reorder, 1-click sort by name/date asc/desc
+- Album cover: `POST/DELETE /api/admin/albums/:id/cover` (dedicated upload, sharp → webp); admin preview `GET /api/admin/albums/:id/cover`
 - Image upload endpoint → runs sharp pipeline (original + full + thumb)
 - About & Connect content: `GET/PUT /api/admin/about`, `POST/DELETE /api/admin/about-portrait` (portrait processed by sharp → webp)
 
@@ -150,19 +153,26 @@ Global:
 - Top nav on every page, seamless (no visual chrome), top-left signature PNG, links: **Portfolio Galleries · About · Connect**.
 - All masonry views: spacing between pictures; thumbnails (compressed) for fast load; hover fades in caption; click → lightbox (dimmed bg, caption beneath, left/right arrows, X top-right); infinite scroll.
 - Masonry: 3 cols desktop / 2 cols mobile, **straight left+right edges** (aligned columns, not ragged) → column-balanced layout with consistent gutters.
+- **Navigation fade**: each route fades/slides in; size is admin-configurable (Off/Subtle/Gentle/Standard, default Subtle); honors `prefers-reduced-motion`.
+- **Branding**: browser tab title = configured site name; favicon = uploaded signature (both applied at runtime from settings).
+- Paper palette is warm/sandy (not white).
 
 Pages:
 - **Home**: paper-white bg; top-center name + signature PNG background; right-edge sticky vertical rectangle with IG handle+link+icon; then selected-work masonry + infinite scroll + lightbox.
 - **Portfolio Galleries**: title top-center; category cards w/ highlight thumbnails; spacious; click → Albums. Categories seed: Family, Engagement/Weddings, People, Things.
 - **Albums**: category name top-center; same layout as galleries; album cards w/ thumbnails; click → Album.
-- **Album**: album name + optional subtitle top-center; full-width masonry; previews + hover + lightbox + infinite scroll.
-- **Private Album**: reached via private URL; password gate first; like Album; "Download All" button between subtitle and gallery (poll UX); lightbox has per-image full-quality download button.
+- **Album**: optional full-bleed **cover hero** (gradient scrim + optional light title overlay) when a cover is set, else a plain centered title; title/subtitle both optional; full-width masonry; previews + hover + lightbox + infinite scroll.
+- **Private Album**: reached via private URL; password gate first; like Album (incl. optional cover hero); "Download All" button between subtitle and gallery (poll UX); lightbox has per-image full-quality download button.
 - **About**: a configurable portrait photo + configurable text (title + paragraphs), both set from the admin "About & Connect" page. Portrait beside text on wide screens.
 - **Connect**: configurable title + intro text + contact email (mailto) + Instagram link, all set from admin.
 - **Admin**: username+password login; management UIs for all of the above, including:
+  - **Settings**: site name, instagram, signature upload, and **page-transition preset** (Off/Subtle/Gentle/Standard).
   - **About & Connect** page: edit About title/text + upload/replace/delete a portrait photo; edit Connect title/text/email.
   - **Category thumbnails** are chosen via a **visual ImagePicker modal** (grid of all uploaded images grouped by album), not by typing an id.
   - **Album thumbnails** are chosen by clicking an image within the Album Editor's own image grid.
+  - **Album cover**: dedicated cover **upload** (not from the gallery; not downloadable), with upload progress + preview.
+  - **Uploads** show a live **% progress bar**; album/home images support **drag-to-reorder**; home gallery can **pick existing** uploaded images.
+  - Albums may be **untitled** (blank name allowed).
 
 ---
 
@@ -197,6 +207,13 @@ Legend: [ ] todo · [~] in progress · [x] done
   - **Optional album title**: name may be empty everywhere (slug falls back to `album-N`; admin shows "Untitled").
   - **Sandier background**: `--paper`/`--paper-dim`/`--line` warmed toward sand.
   - Backend 14/14 tests pass (added cover, untitled, home-add coverage). Verified live in Finch containers incl. the cover-column migration on an existing DB.
+
+- [x] **Phase 13 — Navigation polish + branding** (user-requested):
+  - **Page-transition fade**: routes are wrapped in a path-keyed `.route-fade` div so each navigation remounts and fades/slides in; respects `prefers-reduced-motion`. The admin app uses a stable key so its nav/auth state survives sub-route changes.
+  - **Adjustable transition**: new `transition` setting (preset: `off` | `subtle` | `gentle` | `standard`, validated server-side via `normalizeTransition`, default `subtle`). Exposed via `GET/PUT /api/admin/settings` and public `GET /api/home`. `App.tsx` maps the preset → `--route-fade-duration` / `--route-fade-offset` CSS vars consumed by `.route-fade`. Admin picks it in Settings ("Page transition"). Presets: off `0s/0px`, subtle `0.18s/3px`, gentle `0.28s/6px`, standard `0.4s/12px`.
+  - **Tab title = site name**: on load, `App.tsx` sets `document.title` to the configured site name (fallback "Photography").
+  - **Favicon = signature**: when a signature is set, the favicon points at `/api/signature` (index.html ships a default `<link rel=icon>`; updated at runtime). Caveat: a very wide/thin signature looks small in the tab — a dedicated square favicon variant could be generated if wanted.
+  - Backend 16/16 tests pass (added transition default/save/public/invalid-coercion). Verified live in Finch containers.
 
 **Git branch:** `main` (not master).
 

@@ -109,20 +109,26 @@ That's the only public URL — no subdomains required.
 ### 4. First-time setup in the app
 
 1. Log in at `https://thienq.ddnss.de/admin`.
-2. **Settings:** upload your signature PNG, set Instagram handle/URL and site name.
+2. **Settings:** upload your signature PNG (also used as the browser favicon), set
+   Instagram handle/URL and site name (shown as the browser tab title), and choose a
+   **page-transition** preset (Off / Subtle / Gentle / Standard).
 3. **Categories:** create Family, Engagement/Weddings, People, Things (or your own).
    Set each category's thumbnail with the **visual picker** (a grid of all your
    uploaded images) — no need to type image ids.
-4. **Albums:** create albums, assign categories, upload photos, set captions, pick a
-   thumbnail (click an image in the album's grid), reorder / 1-click sort. Mark an
-   album **private** + set a password to get a shareable `/private/<slug>` link with
-   the "Download All" ZIP flow.
-5. **Home Gallery:** upload/select the selected-work photos for the landing page.
+4. **Albums:** create albums (title is **optional** — leave blank for a cover-only
+   album), assign categories, upload photos (with a **progress bar**), set captions,
+   pick a thumbnail (click an image in the album's grid), **drag to reorder** /
+   1-click sort. Optionally **upload a dedicated cover image** (shown full-width
+   behind the title; kept out of the gallery and not downloadable — landscape works
+   best). Mark an album **private** + set a password to get a shareable
+   `/private/<slug>` link with the "Download All" ZIP flow.
+5. **Home Gallery:** upload new selected-work photos or **pick from existing**
+   uploads; drag to reorder.
 6. **About & Connect:** write your About title/text, upload a portrait photo of
    yourself, and set the Connect title/text + contact email. These drive the public
    `/about` and `/connect` pages.
 
-> Tip: thumbnails (category) and the signature/portrait images are cached
+> Tip: thumbnails, covers, and the signature/portrait images are cached
 > aggressively by the browser; the admin UI cache-busts them automatically after
 > you upload, so you'll see changes immediately.
 
@@ -138,7 +144,8 @@ data/
 ├── originals/<id>.<ext>  untouched uploads (used for full-res downloads & ZIPs)
 ├── full/<id>.webp        compressed ~2560px variant (lightbox)
 ├── thumb/<id>.webp       small variant (masonry previews)
-├── signature/            signature PNG
+├── covers/<albumId>.webp dedicated album cover heroes (~2880px, high quality)
+├── signature/            signature PNG + about-portrait.webp
 └── tmp-zips/             transient download ZIPs (auto-deleted after 10 min)
 ```
 
@@ -151,7 +158,13 @@ deployment fully restores the site. The container images hold no state.
 
 - Image variants are generated on upload; originals are always preserved for
   downloads. The "full" lightbox image is a compressed WebP, not the original.
+- An **album cover** is a *separate* uploaded image (not a gallery photo): kept out
+  of the gallery, processed at higher quality (~2880px), and **not downloadable**
+  (served inline, no original retained). Albums may also have **no title**.
 - Private album ZIPs are built asynchronously: the visitor clicks **Download All**,
   the UI polls until ready, then offers a download link valid for ~10 minutes.
+- The **site name** sets the browser tab title and the **signature** is used as the
+  favicon; the **page-transition** fade size is configurable in Settings. All apply
+  at runtime (a visitor refresh picks up changes — no redeploy).
 - `scripts/notify.sh` posts build/milestone notifications to an ntfy.sh topic
   (used during development).
