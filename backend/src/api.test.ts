@@ -250,6 +250,73 @@ test("private album: locked until unlocked, then download-all zip job runs", asy
   assert.ok(res.rawPayload.length > 0, "zip has content");
 });
 
+test("prebuilt zip: admin prepares, visitor gets instant downloadUrl, invalidated on change", async () => {
+  // private album + password + two images
+  let res = await app.inject({
+    method: "POST",
+    url: "/api/admin/albums",
+    headers: { cookie: adminCookie },
+    payload: { name: "Prebuilt Wedding", isPrivate: true, password: "secret123" },
+  });
+  const albumId = res.json().id;
+  const slug = res.json().slug;
+  for (const fn of ["a.jpg", "b.jpg"]) {
+    const mp = multipart({}, [{ name: "file", filename: fn, data: await jpeg(400, 300) }]);
+    res = await app.inject({
+      method: "POST",
+      url: `/api/admin/images?albumId=${albumId}`,
+      headers: { cookie: adminCookie, ...mp.headers },
+      payload: mp.body,
+    });
+    assert.equal(res.statusCode, 200);
+  }
+
+  // no prebuilt zip yet
+  res = await app.inject({ method: "GET", url: `/api/admin/albums/${albumId}/zip`, headers: { cookie: adminCookie } });
+  assert.equal(res.json().status, "none");
+
+  // admin prepares the zip
+  res = await app.inject({ method: "POST", url: `/api/admin/albums/${albumId}/zip`, headers: { cookie: adminCookie } });
+  assert.equal(res.statusCode, 200);
+
+  // poll admin status until ready
+  let zstatus = "pending";
+  for (let i = 0; i < 50 && zstatus !== "ready"; i++) {
+    res = await app.inject({ method: "GET", url: `/api/admin/albums/${albumId}/zip`, headers: { cookie: adminCookie } });
+    zstatus = res.json().status;
+    if (zstatus !== "ready") await new Promise((r) => setTimeout(r, 50));
+  }
+  assert.equal(zstatus, "ready");
+  assert.ok(res.json().bytes > 0, "prebuilt zip has size");
+
+  // visitor unlocks and sees a direct downloadUrl (no prepare/poll)
+  res = await app.inject({ method: "POST", url: `/api/private/${slug}/unlock`, payload: { password: "secret123" } });
+  const albumCookie = (res.headers["set-cookie"] as string).split(";")[0];
+  res = await app.inject({ method: "GET", url: `/api/private/${slug}`, headers: { cookie: albumCookie } });
+  const downloadUrl = res.json().downloadUrl;
+  assert.ok(downloadUrl, "meta exposes prebuilt downloadUrl");
+
+  // that URL streams a zip with no expiry
+  res = await app.inject({ method: "GET", url: downloadUrl });
+  assert.equal(res.statusCode, 200);
+  assert.match(String(res.headers["content-type"]), /application\/zip/);
+
+  // uploading another image invalidates the prebuilt zip
+  const mp = multipart({}, [{ name: "file", filename: "c.jpg", data: await jpeg(400, 300) }]);
+  await app.inject({
+    method: "POST",
+    url: `/api/admin/images?albumId=${albumId}`,
+    headers: { cookie: adminCookie, ...mp.headers },
+    payload: mp.body,
+  });
+  res = await app.inject({ method: "GET", url: `/api/admin/albums/${albumId}/zip`, headers: { cookie: adminCookie } });
+  assert.equal(res.json().status, "none", "prebuilt zip invalidated after content change");
+
+  // and the visitor meta no longer offers a direct download
+  res = await app.inject({ method: "GET", url: `/api/private/${slug}`, headers: { cookie: albumCookie } });
+  assert.equal(res.json().downloadUrl, null);
+});
+
 test("sort by name desc rewrites order", async () => {
   // create album with three named images
   let res = await app.inject({

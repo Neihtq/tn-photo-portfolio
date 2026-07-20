@@ -13,6 +13,7 @@ import type {
   HomeInfo,
   ImagePage,
   PickerImage,
+  PrebuiltZipStatus,
   PublicAbout,
 } from "./types";
 
@@ -186,6 +187,14 @@ export const api = {
   deleteCover: (albumId: number) =>
     req(`/api/admin/albums/${albumId}/cover`, { method: "DELETE" }),
   reorderAlbums: (order: number[]) => req("/api/admin/albums/reorder", jsonInit("POST", { order })),
+
+  // Prebuilt "Download All" zip (private albums): prepare / check / delete.
+  albumZipStatus: (albumId: number) =>
+    req<PrebuiltZipStatus>(`/api/admin/albums/${albumId}/zip`),
+  prepareAlbumZip: (albumId: number) =>
+    req<{ status: string }>(`/api/admin/albums/${albumId}/zip`, jsonInit("POST")),
+  deleteAlbumZip: (albumId: number) =>
+    req(`/api/admin/albums/${albumId}/zip`, { method: "DELETE" }),
 
   uploadImages: (
     files: FileList | File[],

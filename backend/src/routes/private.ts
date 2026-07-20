@@ -4,7 +4,7 @@ import { db } from "../db.js";
 import { albumImagesPage, sendFile } from "./public.js";
 import { coverPath } from "../images.js";
 import { hasAlbumAccess, issueAlbumCookie, verifyPassword } from "../auth.js";
-import { startAlbumZip, getJob, sweepExpiredZips } from "../zip.js";
+import { startAlbumZip, getJob, sweepExpiredZips, getPersistentJob } from "../zip.js";
 import { now } from "../util.js";
 
 interface PrivAlbum {
@@ -37,11 +37,16 @@ export async function privateRoutes(app: FastifyInstance): Promise<void> {
     const album = getPrivateAlbum(req.params.slug);
     if (!album) return reply.code(404).send({ error: "album_not_found" });
     if (!hasAlbumAccess(req, album.id)) return reply.code(401).send({ error: "locked" });
+    // If the admin prebuilt a zip, hand the visitor a direct download URL so
+    // the page can skip the prepare/poll flow entirely.
+    const prebuilt = getPersistentJob(album.id);
+    const prebuiltReady = prebuilt?.status === "ready" && prebuilt.zip_path;
     return {
       name: album.name,
       subtitle: album.subtitle,
       slug: req.params.slug,
       cover: album.has_cover ? `/api/private/${req.params.slug}/cover` : null,
+      downloadUrl: prebuiltReady ? `/api/download/${prebuilt!.token}/file` : null,
     };
   });
 

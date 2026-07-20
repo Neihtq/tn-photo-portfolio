@@ -13,6 +13,7 @@ interface JobRow {
   status: string;
   zip_path: string | null;
   error: string | null;
+  persistent: number;
   created_at: number;
   expires_at: number | null;
 }
@@ -30,11 +31,11 @@ interface ImageRow {
 export function startAlbumZip(albumId: number): string {
   const token = randomToken();
   db.prepare(
-    "INSERT INTO download_jobs(token, album_id, status, created_at) VALUES(?, ?, 'pending', ?)",
+    "INSERT INTO download_jobs(token, album_id, status, persistent, created_at) VALUES(?, ?, 'pending', 0, ?)",
   ).run(token, albumId, now());
 
   // Fire and forget — status is tracked in the DB.
-  buildZip(token, albumId).catch((err) => {
+  buildZip(token, albumId, false).catch((err) => {
     db.prepare("UPDATE download_jobs SET status='error', error=? WHERE token=?").run(
       String(err?.message ?? err),
       token,
@@ -43,7 +44,31 @@ export function startAlbumZip(albumId: number): string {
   return token;
 }
 
-async function buildZip(token: string, albumId: number): Promise<void> {
+/**
+ * Admin action: (re)build a *persistent* prebuilt zip for an album. Replaces any
+ * existing persistent job for that album. Persistent zips never expire and are
+ * not swept — they're deleted only when explicitly removed or the album's images
+ * change (see invalidatePersistentZip). Returns the new job token.
+ */
+export function startPersistentZip(albumId: number): string {
+  // Drop any prior persistent job (and its file) for this album first.
+  removePersistentZip(albumId);
+
+  const token = randomToken();
+  db.prepare(
+    "INSERT INTO download_jobs(token, album_id, status, persistent, created_at) VALUES(?, ?, 'pending', 1, ?)",
+  ).run(token, albumId, now());
+
+  buildZip(token, albumId, true).catch((err) => {
+    db.prepare("UPDATE download_jobs SET status='error', error=? WHERE token=?").run(
+      String(err?.message ?? err),
+      token,
+    );
+  });
+  return token;
+}
+
+async function buildZip(token: string, albumId: number, persistent: boolean): Promise<void> {
   const images = db
     .prepare("SELECT id, ext, original_name FROM images WHERE album_id = ? ORDER BY sort_order, id")
     .all(albumId) as ImageRow[];
@@ -79,10 +104,11 @@ async function buildZip(token: string, albumId: number): Promise<void> {
     archive.finalize();
   });
 
-  // Start the TTL clock now that the zip is actually ready — not when the build
-  // began. A large album can take minutes to zip; counting from build start
-  // could hand back an already-expired (or near-expired) link.
-  const expiresAt = now() + config.zipTtlMs;
+  // Persistent (admin-prebuilt) zips never expire. On-demand zips start their
+  // TTL clock now that the zip is actually ready — not when the build began
+  // (a large album can take minutes to zip; counting from build start could
+  // hand back an already-expired link).
+  const expiresAt = persistent ? null : now() + config.zipTtlMs;
   db.prepare(
     "UPDATE download_jobs SET status='ready', zip_path=?, expires_at=? WHERE token=?",
   ).run(zipPath, expiresAt, token);
@@ -92,6 +118,30 @@ export function getJob(token: string): JobRow | undefined {
   return db.prepare("SELECT * FROM download_jobs WHERE token = ?").get(token) as
     | JobRow
     | undefined;
+}
+
+/** The current persistent (prebuilt) job for an album, if any. */
+export function getPersistentJob(albumId: number): JobRow | undefined {
+  return db
+    .prepare("SELECT * FROM download_jobs WHERE album_id = ? AND persistent = 1")
+    .get(albumId) as JobRow | undefined;
+}
+
+/** Delete an album's persistent zip (file + row). No-op if none exists. */
+export function removePersistentZip(albumId: number): void {
+  const job = getPersistentJob(albumId);
+  if (!job) return;
+  if (job.zip_path) fs.rmSync(job.zip_path, { force: true });
+  db.prepare("DELETE FROM download_jobs WHERE token = ?").run(job.token);
+}
+
+/**
+ * Invalidate a stale prebuilt zip when an album's contents change (image added,
+ * removed, reordered). Called from admin image mutations so visitors never get a
+ * prebuilt zip that no longer matches the album.
+ */
+export function invalidatePersistentZip(albumId: number): void {
+  removePersistentZip(albumId);
 }
 
 /**

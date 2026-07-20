@@ -14,6 +14,12 @@ import {
 } from "../auth.js";
 import { processImage, safeExt, originalPath, deleteImageFiles, coverPath } from "../images.js";
 import { slugify, uniqueSlug, getSetting, setSetting, now, normalizeTransition } from "../util.js";
+import {
+  startPersistentZip,
+  getPersistentJob,
+  removePersistentZip,
+  invalidatePersistentZip,
+} from "../zip.js";
 
 interface ImageRow {
   id: number;
@@ -353,11 +359,49 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     return reply.send(fs.createReadStream(coverPath(id)));
   });
 
+  // ---- prebuilt "Download All" zip (admin-prepared, persistent) ----
+  // Report the state of an album's prebuilt zip (for the editor UI).
+  app.get<{ Params: { id: string } }>("/api/admin/albums/:id/zip", guard, (req, reply) => {
+    const id = Number(req.params.id);
+    if (!db.prepare("SELECT 1 FROM albums WHERE id=?").get(id)) {
+      return reply.code(404).send({ error: "album_not_found" });
+    }
+    const job = getPersistentJob(id);
+    if (!job) return { status: "none" as const };
+    let bytes: number | null = null;
+    if (job.status === "ready" && job.zip_path && fs.existsSync(job.zip_path)) {
+      bytes = fs.statSync(job.zip_path).size;
+    }
+    return {
+      status: job.status, // pending | ready | error
+      bytes,
+      preparedAt: job.created_at,
+      ...(job.status === "error" ? { error: job.error } : {}),
+    };
+  });
+
+  // (Re)build the prebuilt zip in the background. Returns immediately.
+  app.post<{ Params: { id: string } }>("/api/admin/albums/:id/zip", guard, async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!db.prepare("SELECT 1 FROM albums WHERE id=?").get(id)) {
+      return reply.code(404).send({ error: "album_not_found" });
+    }
+    startPersistentZip(id);
+    return { status: "pending" };
+  });
+
+  // Delete the prebuilt zip — visitors fall back to on-demand preparation.
+  app.delete<{ Params: { id: string } }>("/api/admin/albums/:id/zip", guard, async (req) => {
+    removePersistentZip(Number(req.params.id));
+    return { ok: true };
+  });
+
   app.delete<{ Params: { id: string } }>("/api/admin/albums/:id", guard, async (req) => {
     const id = Number(req.params.id);
     const images = db.prepare("SELECT id, ext FROM images WHERE album_id = ?").all(id) as ImageRow[];
     for (const img of images) await deleteImageFiles(img.id, img.ext);
     await fs.promises.rm(coverPath(id), { force: true }).catch(() => {});
+    removePersistentZip(id);
     db.prepare("DELETE FROM albums WHERE id = ?").run(id);
     return { ok: true };
   });
@@ -396,6 +440,8 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       }
       created.push(id);
     }
+    // Album contents changed → any prebuilt zip is now stale.
+    if (albumId !== null && created.length > 0) invalidatePersistentZip(albumId);
     return { created };
   });
 
@@ -413,10 +459,14 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete<{ Params: { id: string } }>("/api/admin/images/:id", guard, async (req) => {
     const id = Number(req.params.id);
-    const row = db.prepare("SELECT id, ext FROM images WHERE id = ?").get(id) as ImageRow | undefined;
+    const row = db.prepare("SELECT id, ext, album_id FROM images WHERE id = ?").get(id) as
+      | ImageRow
+      | undefined;
     if (row) {
       await deleteImageFiles(row.id, row.ext);
       db.prepare("DELETE FROM images WHERE id = ?").run(id); // cascades home_gallery
+      // Album contents changed → any prebuilt zip is now stale.
+      if (row.album_id !== null) invalidatePersistentZip(row.album_id);
     }
     return { ok: true };
   });
@@ -436,6 +486,8 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         });
       });
       tx(order);
+      // Reordering changes the zip's internal file order → invalidate prebuilt.
+      if (albumId !== null) invalidatePersistentZip(albumId);
       return { ok: true };
     },
   );
@@ -459,6 +511,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         });
       });
       tx(rows.map((r) => r.id));
+      if (albumId !== null) invalidatePersistentZip(albumId);
       return { ok: true, count: rows.length };
     },
   );

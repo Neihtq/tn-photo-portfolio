@@ -47,7 +47,17 @@ export interface AlbumMeta {
   subtitle: string;
   slug: string;
   cover: string | null;
+  // Present only for private albums with an admin-prebuilt zip: a direct
+  // download URL so the page can skip the prepare/poll flow. null otherwise.
+  downloadUrl?: string | null;
 }
+
+// Admin view of an album's prebuilt (persistent) "Download All" zip.
+export type PrebuiltZipStatus =
+  | { status: "none" }
+  | { status: "pending" }
+  | { status: "ready"; bytes: number | null; preparedAt: number }
+  | { status: "error"; error: string };
 
 export type DownloadStatus =
   | { status: "pending" }

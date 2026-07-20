@@ -202,7 +202,7 @@ function UnlockedAlbum({ slug, meta }: UnlockedProps) {
       />
 
       <div className="content">
-        <DownloadAll slug={slug} />
+        <DownloadAll slug={slug} prebuiltUrl={meta?.downloadUrl ?? null} />
 
         <Gallery images={images} renderDownload={renderDownload} />
         <div ref={sentinelRef} />
@@ -216,7 +216,22 @@ function UnlockedAlbum({ slug, meta }: UnlockedProps) {
   );
 }
 
-function DownloadAll({ slug }: { slug: string }) {
+function DownloadAll({ slug, prebuiltUrl }: { slug: string; prebuiltUrl: string | null }) {
+  // When the admin has prebuilt a zip, skip the prepare/poll flow entirely and
+  // offer an instant download — no waiting for the visitor.
+  if (prebuiltUrl) {
+    return (
+      <div className="download-all">
+        <a className="download-btn download-btn--ready" href={prebuiltUrl} download>
+          Download All
+        </a>
+      </div>
+    );
+  }
+  return <DownloadAllOnDemand slug={slug} />;
+}
+
+function DownloadAllOnDemand({ slug }: { slug: string }) {
   const [state, setState] = useState<DownloadState>({ phase: "idle" });
   const pollRef = useRef<number | null>(null);
 
@@ -298,7 +313,7 @@ function DownloadAll({ slug }: { slug: string }) {
           >
             Download ZIP
           </a>
-          <span className="download-note">Link valid for about 10 minutes.</span>
+          <span className="download-note">Link valid for a limited time.</span>
         </div>
       )}
 

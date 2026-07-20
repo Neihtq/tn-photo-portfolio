@@ -70,12 +70,16 @@ export function migrate(): void {
     );
 
     -- Async zip download jobs for private "Download All".
+    -- persistent=1 marks an admin-prebuilt zip: it has no expiry (expires_at
+    -- stays NULL) and the TTL sweeper leaves it alone. persistent=0 is the
+    -- on-demand visitor flow (expires_at set when ready, swept after TTL).
     CREATE TABLE IF NOT EXISTS download_jobs (
       token      TEXT PRIMARY KEY,
       album_id   INTEGER NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
       status     TEXT NOT NULL DEFAULT 'pending', -- pending | ready | error | expired
       zip_path   TEXT,
       error      TEXT,
+      persistent INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL,
       expires_at INTEGER
     );
@@ -87,6 +91,7 @@ export function migrate(): void {
   // uploaded files tracked by `has_cover`. The old column (if present) is left
   // in place — SQLite can't easily drop columns and it's harmless when unused.
   addColumnIfMissing("albums", "has_cover", "INTEGER NOT NULL DEFAULT 0");
+  addColumnIfMissing("download_jobs", "persistent", "INTEGER NOT NULL DEFAULT 0");
 }
 
 /** Add a column to a table only if it isn't already present. Idempotent. */

@@ -1,9 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../../api/client";
-import type { AdminAlbum, AdminCategory, AdminImage } from "../../api/types";
+import type { AdminAlbum, AdminCategory, AdminImage, PrebuiltZipStatus } from "../../api/types";
 import { SortableList } from "../../components/SortableList";
 import "./AlbumEditor.css";
+
+/** Human-readable byte size (e.g. 2048 → "2.0 KB", 1_500_000 → "1.4 MB"). */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let v = bytes / 1024;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v.toFixed(1)} ${units[i]}`;
+}
 
 type SortBy = "name" | "date";
 type SortDir = "asc" | "desc";
@@ -42,6 +55,11 @@ export function AlbumEditor() {
   const [coverVersion, setCoverVersion] = useState(0); // cache-bust the preview
   const coverFileRef = useRef<HTMLInputElement>(null);
 
+  // Prebuilt "Download All" zip state (private albums only).
+  const [zip, setZip] = useState<PrebuiltZipStatus>({ status: "none" });
+  const [zipBusy, setZipBusy] = useState(false);
+  const zipPollRef = useRef<number | null>(null);
+
   const applyAlbum = useCallback((a: AdminAlbum) => {
     setAlbum(a);
     setName(a.name);
@@ -74,6 +92,11 @@ export function AlbumEditor() {
       const { album: a, images: imgs } = await api.adminAlbum(albumId);
       setAlbum(a);
       setImages(imgs);
+      // Content-changing mutations invalidate a prebuilt zip server-side; reflect
+      // that in the UI. (Safe to call regardless; returns "none" for non-private.)
+      if (a.is_private === 1) {
+        setZip(await api.albumZipStatus(albumId));
+      }
     } catch {
       setError("Could not refresh images.");
     }
@@ -172,6 +195,61 @@ export function AlbumEditor() {
     }
   }
 
+  // ---- prebuilt zip (private albums) ----
+  const clearZipPoll = useCallback(() => {
+    if (zipPollRef.current !== null) {
+      window.clearTimeout(zipPollRef.current);
+      zipPollRef.current = null;
+    }
+  }, []);
+
+  const refreshZip = useCallback(async () => {
+    try {
+      const s = await api.albumZipStatus(albumId);
+      setZip(s);
+      // Keep polling while a build is in progress.
+      if (s.status === "pending") {
+        zipPollRef.current = window.setTimeout(() => void refreshZip(), 1500);
+      }
+    } catch {
+      /* leave prior state; non-critical */
+    }
+  }, [albumId]);
+
+  // Load zip status once the album is known to be private; clean up the poll.
+  useEffect(() => {
+    if (album?.is_private === 1) void refreshZip();
+    return clearZipPoll;
+  }, [album?.is_private, refreshZip, clearZipPoll]);
+
+  async function onPrepareZip() {
+    setZipBusy(true);
+    setError(null);
+    try {
+      await api.prepareAlbumZip(albumId);
+      setZip({ status: "pending" });
+      await refreshZip();
+    } catch {
+      setError("Could not start zip preparation.");
+    } finally {
+      setZipBusy(false);
+    }
+  }
+
+  async function onDeleteZip() {
+    setZipBusy(true);
+    setError(null);
+    try {
+      await api.deleteAlbumZip(albumId);
+      clearZipPoll();
+      setZip({ status: "none" });
+    } catch {
+      setError("Could not delete the prebuilt zip.");
+    } finally {
+      setZipBusy(false);
+    }
+  }
+
   // Persist a reordered list of image ids for this album.
   const persistOrder = useCallback(
     async (next: AdminImage[]) => {
@@ -180,6 +258,8 @@ export function AlbumEditor() {
       setError(null);
       try {
         await api.reorderImages(next.map((i) => i.id), albumId);
+        // Reordering invalidates a prebuilt zip server-side; reflect it.
+        if (album?.is_private === 1) setZip(await api.albumZipStatus(albumId));
       } catch {
         setError("Could not save the new order.");
         await refreshImages();
@@ -187,7 +267,7 @@ export function AlbumEditor() {
         setBusy(false);
       }
     },
-    [albumId, refreshImages],
+    [albumId, refreshImages, album?.is_private],
   );
 
   async function onSaveCaption(imageId: number, caption: string) {
@@ -415,6 +495,64 @@ export function AlbumEditor() {
           </div>
         )}
       </section>
+
+      {album.is_private === 1 && (
+        <section className="admin-card">
+          <h2 className="admin-card-title">Download zip (prebuilt)</h2>
+          <p className="admin-hint">
+            Prepare the “Download All” zip ahead of time so visitors get an instant
+            download instead of waiting for it to build. It’s rebuilt on demand and
+            automatically discarded when you add, remove, or reorder photos — just
+            prepare it again once the album is final.
+          </p>
+
+          <div className="ae-zip-row">
+            <div className="ae-zip-status">
+              {zip.status === "none" && <span className="admin-empty">No prebuilt zip.</span>}
+              {zip.status === "pending" && (
+                <span className="ae-zip-preparing">
+                  <span className="btn-spinner" aria-hidden="true" /> Preparing…
+                </span>
+              )}
+              {zip.status === "ready" && (
+                <span className="ae-zip-ready">
+                  Ready{zip.bytes != null ? ` · ${formatBytes(zip.bytes)}` : ""} — visitors
+                  download instantly.
+                </span>
+              )}
+              {zip.status === "error" && (
+                <span className="admin-error">Preparation failed: {zip.error}</span>
+              )}
+            </div>
+
+            <div className="admin-actions">
+              <button
+                type="button"
+                className="admin-btn"
+                onClick={() => void onPrepareZip()}
+                disabled={zipBusy || zip.status === "pending" || images.length === 0}
+              >
+                {zip.status === "ready" || zip.status === "error"
+                  ? "Rebuild zip"
+                  : "Prepare zip"}
+              </button>
+              {(zip.status === "ready" || zip.status === "error") && (
+                <button
+                  type="button"
+                  className="admin-btn admin-btn-danger"
+                  onClick={() => void onDeleteZip()}
+                  disabled={zipBusy}
+                >
+                  Delete zip
+                </button>
+              )}
+            </div>
+          </div>
+          {images.length === 0 && (
+            <p className="admin-hint">Add photos before preparing a zip.</p>
+          )}
+        </section>
+      )}
 
       <section className="admin-card">
         <div className="ae-images-head">

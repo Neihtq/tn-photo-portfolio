@@ -275,4 +275,38 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   background: #fff;
 }
+/* Prebuilt download-zip row */
+.ae-zip-row {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.ae-zip-status {
+  font-size: 14px;
+  color: var(--ink);
+}
+.ae-zip-preparing,
+.ae-zip-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ae-zip-ready {
+  color: var(--ink-soft);
+}
+
+/* Small inline spinner (uses the global @keyframes spin from theme.css).
+   Defined here so the admin doesn't depend on the visitor page's CSS. */
+.ae-zip-preparing .btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ink-faint);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex: none;
+}
+
 /* .upload-progress is defined globally in AdminApp.css. */
