@@ -82,15 +82,53 @@
   gap: 14px;
 }
 
+/* Rows are the <li> rendered by SortableList; item visuals live inside. */
+.hga-list > li {
+  list-style: none;
+}
+
 .hga-item {
   display: grid;
-  grid-template-columns: auto 88px 1fr auto;
+  grid-template-columns: auto auto 88px 1fr auto;
   align-items: center;
   gap: 18px;
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 3px;
   background: var(--paper);
+}
+
+.hga-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 40px;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--ink-soft);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: grab;
+  touch-action: none; /* let the pointer sensor own the gesture on touch */
+  transition: border-color 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+.hga-drag-handle:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.hga-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* The floating clone shown under the cursor while dragging a row. */
+.sortable-overlay .hga-item {
+  cursor: grabbing;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  background: #fff;
 }
 
 .hga-reorder {
@@ -154,11 +192,16 @@
 
 @media (max-width: 620px) {
   .hga-item {
-    grid-template-columns: auto 72px 1fr;
+    grid-template-columns: auto auto 72px 1fr;
     grid-template-areas:
-      "reorder thumb caption"
-      "actions actions actions";
+      "handle reorder thumb caption"
+      "actions actions actions actions";
     row-gap: 14px;
+  }
+
+  .hga-drag-handle {
+    grid-area: handle;
+    height: 100%;
   }
 
   .hga-reorder {

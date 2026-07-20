@@ -100,6 +100,11 @@
   gap: var(--gutter);
 }
 
+/* Grid cells are the <li> rendered by SortableList; tile visuals live inside. */
+.ae-grid > li {
+  list-style: none;
+}
+
 .ae-tile {
   display: flex;
   flex-direction: column;
@@ -108,6 +113,39 @@
   border: 1px solid var(--line);
   border-radius: 3px;
   background: #fff;
+}
+
+/* Thumbnail + drag grip sit on one row. */
+.ae-tile-top {
+  position: relative;
+}
+
+.ae-drag-handle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  cursor: grab;
+  touch-action: none; /* let the pointer sensor own the gesture on touch */
+  transition: border-color 0.2s var(--ease);
+}
+
+.ae-drag-handle:hover {
+  border-color: var(--ink);
+}
+
+.ae-drag-handle:active {
+  cursor: grabbing;
 }
 
 .ae-tile-thumb {
@@ -227,10 +265,14 @@
 .ae-drag-hint {
   margin-top: 0;
 }
-.ae-tile {
-  cursor: grab;
+
+/* The floating clone shown under the cursor while dragging a grid tile. */
+.sortable-overlay-grid {
+  width: 200px;
+  cursor: grabbing;
 }
-.ae-tile-dragging {
-  opacity: 0.4;
+.sortable-overlay-grid .ae-tile {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  background: #fff;
 }
 /* .upload-progress is defined globally in AdminApp.css. */

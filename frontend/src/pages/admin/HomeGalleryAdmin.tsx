@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 import type { AdminImage } from "../../api/types";
 import { ImagePicker } from "../../components/ImagePicker";
+import { SortableList } from "../../components/SortableList";
 import "./HomeGalleryAdmin.css";
 
 // Admin → Home gallery: manage the ordered selected-work images shown on the
@@ -14,7 +15,6 @@ export function HomeGalleryAdmin() {
   const [busy, setBusy] = useState(false);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -67,17 +67,9 @@ export function HomeGalleryAdmin() {
     }
   }
 
-  // Drag-to-reorder: drop dragged item before the target index, then persist.
-  async function onDrop(targetIndex: number) {
-    if (dragIndex === null || dragIndex === targetIndex) {
-      setDragIndex(null);
-      return;
-    }
-    const next = images.slice();
-    const [moved] = next.splice(dragIndex, 1);
-    next.splice(targetIndex, 0, moved);
-    setDragIndex(null);
-    setImages(next);
+  // Persist a reordered list (from drag-to-reorder or the arrows).
+  async function persistOrder(next: AdminImage[]) {
+    setImages(next); // optimistic
     setBusy(true);
     setError(null);
     try {
@@ -136,20 +128,7 @@ export function HomeGalleryAdmin() {
     const next = images.slice();
     const [moved] = next.splice(index, 1);
     next.splice(target, 0, moved);
-    setImages(next);
-    setBusy(true);
-    setError(null);
-    try {
-      await api.reorderImages(
-        next.map((i) => i.id),
-        null,
-      );
-    } catch {
-      setError("Could not reorder images.");
-      await load();
-    } finally {
-      setBusy(false);
-    }
+    await persistOrder(next);
   }
 
   async function sort(by: "name" | "date", dir: "asc" | "desc") {
@@ -231,75 +210,88 @@ export function HomeGalleryAdmin() {
           <p className="admin-empty">No images in the home gallery yet.</p>
         ) : (
           <>
-          <p className="admin-hint">Drag rows to reorder, or use the arrows.</p>
-          <ul className="hga-list">
-            {images.map((img, index) => (
-              <li
-                className={"hga-item" + (dragIndex === index ? " hga-item-dragging" : "")}
-                key={img.id}
-                draggable
-                onDragStart={() => setDragIndex(index)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => void onDrop(index)}
-                onDragEnd={() => setDragIndex(null)}
-              >
-                <div className="hga-reorder">
+          <p className="admin-hint">
+            Drag the ⠿ grip to reorder (the list auto-scrolls), or use the arrows.
+          </p>
+          <SortableList
+            items={images}
+            onReorder={(next) => void persistOrder(next)}
+            layout="list"
+            className="hga-list"
+            disabled={busy}
+          >
+            {(img, { handle }) => {
+              const index = images.findIndex((i) => i.id === img.id);
+              return (
+                <div className="hga-item">
                   <button
-                    className="hga-arrow"
+                    className="hga-drag-handle"
                     type="button"
-                    aria-label="Move up"
-                    onClick={() => void move(index, -1)}
-                    disabled={busy || index === 0}
+                    title="Drag to reorder"
+                    aria-label="Drag to reorder"
+                    {...handle}
                   >
-                    ↑
+                    ⠿
                   </button>
-                  <button
-                    className="hga-arrow"
-                    type="button"
-                    aria-label="Move down"
-                    onClick={() => void move(index, 1)}
-                    disabled={busy || index === images.length - 1}
-                  >
-                    ↓
-                  </button>
-                </div>
 
-                <div className="hga-thumb">
-                  <img src={api.thumbUrl(img.id)} alt={img.caption || "Gallery image"} loading="lazy" />
-                </div>
+                  <div className="hga-reorder">
+                    <button
+                      className="hga-arrow"
+                      type="button"
+                      aria-label="Move up"
+                      onClick={() => void move(index, -1)}
+                      disabled={busy || index === 0}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      className="hga-arrow"
+                      type="button"
+                      aria-label="Move down"
+                      onClick={() => void move(index, 1)}
+                      disabled={busy || index === images.length - 1}
+                    >
+                      ↓
+                    </button>
+                  </div>
 
-                <label className="hga-caption admin-field">
-                  <span className="admin-label">Caption</span>
-                  <input
-                    className="admin-input"
-                    type="text"
-                    defaultValue={img.caption}
-                    placeholder="Add a caption…"
-                    onBlur={(e) => void onCaptionBlur(img, e.target.value)}
-                  />
-                </label>
+                  <div className="hga-thumb">
+                    <img src={api.thumbUrl(img.id)} alt={img.caption || "Gallery image"} loading="lazy" />
+                  </div>
 
-                <div className="hga-item-actions">
-                  <button
-                    className="admin-btn admin-btn-danger"
-                    type="button"
-                    onClick={() => void onRemoveFromHome(img)}
-                    disabled={busy}
-                  >
-                    Remove from home
-                  </button>
-                  <button
-                    className="admin-btn admin-btn-danger"
-                    type="button"
-                    onClick={() => void onDelete(img)}
-                    disabled={busy}
-                  >
-                    Delete
-                  </button>
+                  <label className="hga-caption admin-field">
+                    <span className="admin-label">Caption</span>
+                    <input
+                      className="admin-input"
+                      type="text"
+                      defaultValue={img.caption}
+                      placeholder="Add a caption…"
+                      onBlur={(e) => void onCaptionBlur(img, e.target.value)}
+                    />
+                  </label>
+
+                  <div className="hga-item-actions">
+                    <button
+                      className="admin-btn admin-btn-danger"
+                      type="button"
+                      onClick={() => void onRemoveFromHome(img)}
+                      disabled={busy}
+                    >
+                      Remove from home
+                    </button>
+                    <button
+                      className="admin-btn admin-btn-danger"
+                      type="button"
+                      onClick={() => void onDelete(img)}
+                      disabled={busy}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-              </li>
-            ))}
-          </ul>
+              );
+            }}
+          </SortableList>
           </>
         )}
       </section>

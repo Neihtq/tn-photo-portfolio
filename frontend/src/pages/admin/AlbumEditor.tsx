@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../../api/client";
 import type { AdminAlbum, AdminCategory, AdminImage } from "../../api/types";
+import { SortableList } from "../../components/SortableList";
 import "./AlbumEditor.css";
 
 type SortBy = "name" | "date";
@@ -40,8 +41,6 @@ export function AlbumEditor() {
   const [coverPct, setCoverPct] = useState(0);
   const [coverVersion, setCoverVersion] = useState(0); // cache-bust the preview
   const coverFileRef = useRef<HTMLInputElement>(null);
-  // Index of the image currently being dragged (for drag-to-reorder).
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   const applyAlbum = useCallback((a: AdminAlbum) => {
     setAlbum(a);
@@ -190,19 +189,6 @@ export function AlbumEditor() {
     },
     [albumId, refreshImages],
   );
-
-  // Drag-to-reorder: drop the dragged tile before the target index.
-  function onDrop(targetIndex: number) {
-    if (dragIndex === null || dragIndex === targetIndex) {
-      setDragIndex(null);
-      return;
-    }
-    const next = images.slice();
-    const [moved] = next.splice(dragIndex, 1);
-    next.splice(targetIndex, 0, moved);
-    setDragIndex(null);
-    void persistOrder(next);
-  }
 
   async function onSaveCaption(imageId: number, caption: string) {
     const img = images.find((i) => i.id === imageId);
@@ -495,34 +481,42 @@ export function AlbumEditor() {
           <p className="admin-empty">No images yet. Upload some to get started.</p>
         ) : (
           <>
-          <p className="admin-hint ae-drag-hint">Drag images to reorder, or use the arrows.</p>
-          <ul className="ae-grid">
-            {images.map((img, index) => {
+          <p className="admin-hint ae-drag-hint">
+            Drag the ⠿ grip to reorder (the list auto-scrolls), or use the arrows.
+          </p>
+          <SortableList
+            items={images}
+            onReorder={(next) => void persistOrder(next)}
+            layout="grid"
+            className="ae-grid"
+            disabled={busy}
+          >
+            {(img, { handle }) => {
               const isThumb = album.thumbnail_image_id === img.id;
+              const index = images.findIndex((i) => i.id === img.id);
               return (
-                <li
-                  key={img.id}
-                  className={
-                    "ae-tile" +
-                    (isThumb ? " ae-tile-thumb" : "") +
-                    (dragIndex === index ? " ae-tile-dragging" : "")
-                  }
-                  draggable
-                  onDragStart={() => setDragIndex(index)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => onDrop(index)}
-                  onDragEnd={() => setDragIndex(null)}
-                >
-                  <button
-                    type="button"
-                    className="ae-thumb-btn"
-                    onClick={() => onSetThumbnail(img.id)}
-                    disabled={busy}
-                    title={isThumb ? "Current album thumbnail" : "Set as album thumbnail"}
-                  >
-                    <img src={img.thumb || api.thumbUrl(img.id)} alt={img.caption} loading="lazy" />
-                    {isThumb && <span className="ae-thumb-badge">Thumbnail</span>}
-                  </button>
+                <div className={"ae-tile" + (isThumb ? " ae-tile-thumb" : "")}>
+                  <div className="ae-tile-top">
+                    <button
+                      type="button"
+                      className="ae-thumb-btn"
+                      onClick={() => onSetThumbnail(img.id)}
+                      disabled={busy}
+                      title={isThumb ? "Current album thumbnail" : "Set as album thumbnail"}
+                    >
+                      <img src={img.thumb || api.thumbUrl(img.id)} alt={img.caption} loading="lazy" />
+                      {isThumb && <span className="ae-thumb-badge">Thumbnail</span>}
+                    </button>
+                    <button
+                      type="button"
+                      className="ae-drag-handle"
+                      title="Drag to reorder"
+                      aria-label="Drag to reorder"
+                      {...handle}
+                    >
+                      ⠿
+                    </button>
+                  </div>
 
                   <input
                     className="admin-input ae-caption"
@@ -561,10 +555,10 @@ export function AlbumEditor() {
                       ✕
                     </button>
                   </div>
-                </li>
+                </div>
               );
-            })}
-          </ul>
+            }}
+          </SortableList>
           </>
         )}
       </section>
