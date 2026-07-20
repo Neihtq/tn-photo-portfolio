@@ -57,7 +57,7 @@ export const config = {
   privateAlbumTtl: process.env.PRIVATE_ALBUM_TTL ?? "2h",
 
   // Downloads
-  zipTtlMs: envInt("ZIP_TTL_MINUTES", 10) * 60 * 1000,
+  zipTtlMs: envInt("ZIP_TTL_MINUTES", 1440) * 60 * 1000, // default 24h
 
   // Uploads
   maxUploadBytes: envInt("MAX_UPLOAD_MB", 100) * 1024 * 1024,

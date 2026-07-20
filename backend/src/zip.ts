@@ -49,11 +49,13 @@ async function buildZip(token: string, albumId: number): Promise<void> {
     .all(albumId) as ImageRow[];
 
   const zipPath = path.join(config.zipsDir, `${token}.zip`);
-  const expiresAt = now() + config.zipTtlMs;
 
   await new Promise<void>((resolve, reject) => {
     const output = fs.createWriteStream(zipPath);
-    const archive = archiver("zip", { zlib: { level: 6 } });
+    // Originals are already-compressed JPEG/WebP, so deflate wastes CPU for
+    // ~no size gain. Store (no compression) makes this an I/O copy → much
+    // faster, which matters for large albums.
+    const archive = archiver("zip", { store: true });
     output.on("close", () => resolve());
     archive.on("error", reject);
     archive.pipe(output);
@@ -77,6 +79,10 @@ async function buildZip(token: string, albumId: number): Promise<void> {
     archive.finalize();
   });
 
+  // Start the TTL clock now that the zip is actually ready — not when the build
+  // began. A large album can take minutes to zip; counting from build start
+  // could hand back an already-expired (or near-expired) link.
+  const expiresAt = now() + config.zipTtlMs;
   db.prepare(
     "UPDATE download_jobs SET status='ready', zip_path=?, expires_at=? WHERE token=?",
   ).run(zipPath, expiresAt, token);
