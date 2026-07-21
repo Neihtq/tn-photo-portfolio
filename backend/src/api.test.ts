@@ -342,6 +342,8 @@ test("og: album preview renders meta tags + a jpeg image (public & private)", as
   assert.match(res.body, /property="og:description" content="Golden hour"/);
   assert.match(res.body, new RegExp(`property="og:image".*/api/og/albums/${pubSlug}/image`));
   assert.match(res.body, new RegExp(`url=/albums/${pubSlug}`)); // browser redirect to SPA
+  // og:url/og:image must be https (messengers reject http images on https pages).
+  assert.match(res.body, /property="og:image" content="https:\/\//);
 
   // OG image renders as JPEG
   res = await app.inject({ method: "GET", url: `/api/og/albums/${pubSlug}/image` });

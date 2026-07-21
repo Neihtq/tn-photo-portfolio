@@ -114,10 +114,14 @@ function previewImageSource(album: AlbumRow): string | null {
   return null;
 }
 
-/** Build an absolute URL from the incoming request (honoring proxy headers). */
-function absoluteUrl(req: { headers: Record<string, unknown>; protocol: string }, path: string): string {
+/**
+ * Build an absolute URL from the incoming request (honoring proxy headers).
+ * Defaults the scheme to https: the public site is served over TLS (via Nginx
+ * Proxy Manager), and messengers reject an http og:image on an https page.
+ */
+function absoluteUrl(req: { headers: Record<string, unknown> }, path: string): string {
   const host = (req.headers["x-forwarded-host"] as string) || (req.headers["host"] as string) || "";
-  const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
+  const proto = (req.headers["x-forwarded-proto"] as string) || "https";
   return host ? `${proto}://${host}${path}` : path;
 }
 
