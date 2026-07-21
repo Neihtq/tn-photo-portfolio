@@ -317,6 +317,63 @@ test("prebuilt zip: admin prepares, visitor gets instant downloadUrl, invalidate
   assert.equal(res.json().downloadUrl, null);
 });
 
+test("og: album preview renders meta tags + a jpeg image (public & private)", async () => {
+  // public album with one image (no cover) → preview falls back to first image
+  let res = await app.inject({
+    method: "POST",
+    url: "/api/admin/albums",
+    headers: { cookie: adminCookie },
+    payload: { name: "Sunset Shoot", subtitle: "Golden hour" },
+  });
+  const pubSlug = res.json().slug;
+  let mp = multipart({}, [{ name: "file", filename: "s.jpg", data: await jpeg(1000, 700) }]);
+  await app.inject({
+    method: "POST",
+    url: `/api/admin/images?albumId=${res.json().id}`,
+    headers: { cookie: adminCookie, ...mp.headers },
+    payload: mp.body,
+  });
+
+  // OG HTML: album-specific title/description + og:image + points at SPA route
+  res = await app.inject({ method: "GET", url: `/api/og/albums/${pubSlug}` });
+  assert.equal(res.statusCode, 200);
+  assert.match(String(res.headers["content-type"]), /text\/html/);
+  assert.match(res.body, /property="og:title" content="Sunset Shoot/);
+  assert.match(res.body, /property="og:description" content="Golden hour"/);
+  assert.match(res.body, new RegExp(`property="og:image".*/api/og/albums/${pubSlug}/image`));
+  assert.match(res.body, new RegExp(`url=/albums/${pubSlug}`)); // browser redirect to SPA
+
+  // OG image renders as JPEG
+  res = await app.inject({ method: "GET", url: `/api/og/albums/${pubSlug}/image` });
+  assert.equal(res.statusCode, 200);
+  assert.match(String(res.headers["content-type"]), /image\/jpeg/);
+  assert.ok(res.rawPayload.length > 0);
+
+  // private album → preview still works, and points at the /private/ SPA route
+  res = await app.inject({
+    method: "POST",
+    url: "/api/admin/albums",
+    headers: { cookie: adminCookie },
+    payload: { name: "Client Gallery", isPrivate: true, password: "pw" },
+  });
+  const privSlug = res.json().slug;
+  mp = multipart({}, [{ name: "file", filename: "p.jpg", data: await jpeg(900, 600) }]);
+  await app.inject({
+    method: "POST",
+    url: `/api/admin/images?albumId=${res.json().id}`,
+    headers: { cookie: adminCookie, ...mp.headers },
+    payload: mp.body,
+  });
+  res = await app.inject({ method: "GET", url: `/api/og/albums/${privSlug}` });
+  assert.equal(res.statusCode, 200);
+  assert.match(res.body, new RegExp(`url=/private/${privSlug}`));
+
+  // unknown slug → generic site preview, no crash
+  res = await app.inject({ method: "GET", url: `/api/og/albums/does-not-exist` });
+  assert.equal(res.statusCode, 200);
+  assert.match(String(res.headers["content-type"]), /text\/html/);
+});
+
 test("sort by name desc rewrites order", async () => {
   // create album with three named images
   let res = await app.inject({

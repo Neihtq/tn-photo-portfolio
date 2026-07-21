@@ -6,6 +6,7 @@ import { migrate } from "./db.js";
 import { publicRoutes } from "./routes/public.js";
 import { privateRoutes } from "./routes/private.js";
 import { adminRoutes } from "./routes/admin.js";
+import { ogRoutes } from "./routes/og.js";
 import { startZipSweeper, sweepExpiredZips } from "./zip.js";
 
 export async function buildServer() {
@@ -25,6 +26,7 @@ export async function buildServer() {
   await app.register(publicRoutes);
   await app.register(privateRoutes);
   await app.register(adminRoutes);
+  await app.register(ogRoutes);
 
   app.get("/api/health", async () => ({ ok: true }));
 
