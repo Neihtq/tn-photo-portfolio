@@ -70,7 +70,7 @@ export async function ogRoutes(app: FastifyInstance): Promise<void> {
           title: siteName,
           description: "Photography portfolio",
           image: null,
-          url: spaPath,
+          url: absoluteUrl(req, spaPath),
           redirectTo: spaPath,
         }),
       );
